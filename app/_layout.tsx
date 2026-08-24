@@ -36,6 +36,9 @@ export default function RootLayout() {
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="call-child" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="activity" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="band-details" options={{ presentation: 'modal' }} />
             <Stack.Screen name="emergency" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="child-profile" options={{ presentation: 'modal' }} />
             <Stack.Screen name="pair-band" options={{ presentation: 'modal' }} />

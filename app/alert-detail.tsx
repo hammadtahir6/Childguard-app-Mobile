@@ -93,7 +93,7 @@ export default function AlertDetail() {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity onPress={() => makeCall('+923001234567')} style={[styles.btn, { backgroundColor: '#FFF', borderWidth: 1, borderColor: colors.BORDER }]}>
+          <TouchableOpacity onPress={() => router.push('/call-child')} style={[styles.btn, { backgroundColor: '#FFF', borderWidth: 1, borderColor: colors.BORDER }]}>
             <Ionicons name="call" size={20} color={colors.DANGER} />
             <ThemedText weight="bold" style={{ fontSize: 16, color: colors.DANGER }}>CALL CHILD NOW</ThemedText>
           </TouchableOpacity>

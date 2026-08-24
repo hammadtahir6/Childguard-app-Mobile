@@ -10,6 +10,7 @@ import { useUserStore } from '../../store/userStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useChildrenStore } from '../../store/childrenStore';
 import { useToastStore } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore'; // Added Auth Store
 import { Ionicons } from '@expo/vector-icons';
 
 const LANGUAGES: Record<string, string> = {
@@ -25,10 +26,16 @@ const INTERVAL_LABELS: Record<number, string> = {
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, mode, toggleTheme } = useThemeStore();
-  const { profile, logout } = useUserStore();
+  
+  // FIX: Renamed 'logout' to 'clearUserData' to avoid naming collision
+  const { profile, logout: clearUserData } = useUserStore();
+  
   const { language, locationInterval } = useSettingsStore();
-  const { children } = useChildrenStore(); // FIXED: Added this
+  const { children } = useChildrenStore();
   const { showToast } = useToastStore();
+  
+  // FIX: Renamed 'logout' to 'clearAuth' to avoid naming collision
+  const { logout: clearAuth } = useAuthStore();
 
   const handleLogout = () => {
     Alert.alert(
@@ -40,9 +47,10 @@ export default function SettingsScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: () => {
-            logout();
+            clearUserData(); // Clears profile data
+            clearAuth();     // Clears login state
             showToast('Signed out successfully', 'info');
-            router.replace('/(auth)/login');
+            router.replace('/onboarding');
           }
         }
       ]
@@ -77,7 +85,7 @@ export default function SettingsScreen() {
   const totalZones = children.reduce((sum, child) => sum + child.safeZones.length, 0);
 
   return (
-     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
         {/* Profile Header Card */}
@@ -257,7 +265,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <ThemedText style={{ textAlign: 'center', color: colors.TEXT_SECONDARY, fontSize: 12, marginTop: 24 }}>
-          ChildGuard v1.0.0 • Made for child safety
+          ChildGuard v1.0.0 • Built for child safety
         </ThemedText>
 
       </ScrollView>

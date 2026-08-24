@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '../components/ui/ThemedText';
 import { ThemedView } from '../components/ui/ThemedView';
 import { GlassCard } from '../components/ui/GlassCard';
-import { GradientButton } from '../components/ui/GradientButton';
 import { useThemeStore } from '../store/themeStore';
 import { useChildrenStore } from '../store/childrenStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +31,6 @@ export default function AddChildScreen() {
       Alert.alert('Missing Info', 'Please enter the child\'s name.');
       return;
     }
-    // Save basic profile first, then navigate to pair band
     addChild({
       id: Date.now().toString(), name: formData.name, age: parseInt(formData.age) || 0, gender: formData.gender,
       photo: photo || undefined, status: 'SAFE', vitals: { heartRate: 85, spo2: 98, temperature: 36.5 },
@@ -44,12 +43,12 @@ export default function AddChildScreen() {
   };
 
   const handleSkip = () => {
-    handleContinue(); // In a real app, this would skip the band pairing
+    handleContinue();
   };
 
   return (
-    <ThemedView style={{ flex: 1 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
@@ -77,7 +76,6 @@ export default function AddChildScreen() {
         {/* Form Card */}
         <GlassCard style={{ padding: 20, gap: 20 }}>
           
-          {/* Personal Info */}
           <View>
             <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Child's Full Name *</ThemedText>
             <TextInput placeholder="e.g. Sara Ahmed" placeholderTextColor={colors.TEXT_SECONDARY} value={formData.name} onChangeText={(t) => setFormData({...formData, name: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
@@ -105,7 +103,6 @@ export default function AddChildScreen() {
             <TextInput placeholder="e.g. Class 3" placeholderTextColor={colors.TEXT_SECONDARY} value={formData.grade} onChangeText={(t) => setFormData({...formData, grade: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
           </View>
 
-          {/* School Info */}
           <View style={{ height: 1, backgroundColor: colors.BORDER, marginVertical: 4 }} />
           
           <View>
@@ -124,7 +121,6 @@ export default function AddChildScreen() {
             </View>
           </View>
 
-          {/* Medical Notes */}
           <View style={{ height: 1, backgroundColor: colors.BORDER, marginVertical: 4 }} />
           
           <View>
@@ -143,14 +139,19 @@ export default function AddChildScreen() {
 
         {/* Bottom Buttons */}
         <View style={{ marginTop: 24, gap: 12 }}>
-          <GradientButton title="Continue to Band Pairing →" onPress={handleContinue} />
+          <TouchableOpacity 
+            onPress={handleContinue}
+            style={{ paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: colors.ACCENT_TEAL }}
+          >
+            <ThemedText weight="bold" style={{ color: '#FFF', fontSize: 16 }}>Continue to Band Pairing →</ThemedText>
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleSkip} style={{ paddingVertical: 16, alignItems: 'center' }}>
             <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, fontWeight: '500' }}>Skip — Add Band Later</ThemedText>
           </TouchableOpacity>
         </View>
 
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 

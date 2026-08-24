@@ -16,20 +16,27 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../store/themeStore';
 import { useChildrenStore } from '../../store/childrenStore';
+import { useToastStore } from '../../store/toastStore'; // ✅ ADDED THIS IMPORT
 import { ThemedText } from '../../components/ui/ThemedText';
 import { GlassCard } from '../../components/ui/GlassCard';
-import { GradientButton } from '../../components/ui/GradientButton';
 import OfflineBanner from '../../components/OfflineBanner';
 import LastSynced from '../../components/LastSynced';
 
 const { width } = Dimensions.get('window');
 
+// Helper: Convert seconds to readable time
+const formatTimeAgo = (seconds: number): string => {
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
+};
+
 export default function HomeDashboard() {
   const router = useRouter();
   const { colors, toggleTheme, mode } = useThemeStore();
   const { activeChildId, setActiveChild, children, updateVitals, deleteChild } = useChildrenStore();
+  const { showToast } = useToastStore(); // ✅ ADDED THIS HOOK
   
-  // SAFETY CHECK: Handle empty children array
   const activeChild = children.length > 0 
     ? (children.find(c => c.id === activeChildId) || children[0])
     : null;
@@ -37,7 +44,6 @@ export default function HomeDashboard() {
   const [secondsAgo, setSecondsAgo] = useState(2);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Pull-to-Refresh Handler
   const onRefresh = () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -48,10 +54,8 @@ export default function HomeDashboard() {
     }, 1500);
   };
 
-  // Simulate live data updates
   useEffect(() => {
     if (!activeChild) return;
-    
     const interval = setInterval(() => {
       setSecondsAgo(prev => prev + 5);
       updateVitals(activeChildId, {
@@ -81,7 +85,7 @@ export default function HomeDashboard() {
     );
   };
 
-  // If no children exist, show empty state
+  // Empty state
   if (!activeChild || children.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
@@ -93,10 +97,12 @@ export default function HomeDashboard() {
           <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, textAlign: 'center', marginBottom: 24 }}>
             Add your first child to start monitoring
           </ThemedText>
-          <GradientButton 
-            title="Add Child" 
-            onPress={() => router.push('/add-child')} 
-          />
+          <TouchableOpacity 
+            onPress={() => router.push('/add-child')}
+            style={{ backgroundColor: colors.ACCENT_TEAL, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14 }}
+          >
+            <ThemedText weight="bold" style={{ color: '#FFF', fontSize: 16 }}>Add Child</ThemedText>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -110,7 +116,9 @@ export default function HomeDashboard() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
+      <OfflineBanner />
+      
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}
@@ -187,35 +195,46 @@ export default function HomeDashboard() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Status Hero Card */}
-        <GlassCard glowColor={activeChild.status === 'SAFE' ? colors.ACCENT_TEAL : colors.DANGER} style={{ marginBottom: 20, padding: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={[styles.heroAvatar, { borderColor: activeChild.status === 'SAFE' ? colors.SUCCESS : colors.DANGER, backgroundColor: colors.BG_TERTIARY, marginRight: 16 }]}>
-              <ThemedText style={{ fontSize: 28, fontWeight: 'bold', color: colors.TEXT_PRIMARY }}>{activeChild.name.charAt(0)}</ThemedText>
+        {/* Status Hero Card - Shadow now contained */}
+        <View style={{ overflow: 'hidden', borderRadius: 20, marginBottom: 20 }}>
+          <GlassCard glowColor={activeChild.status === 'SAFE' ? colors.ACCENT_TEAL : colors.DANGER} style={{ padding: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.heroAvatar, { borderColor: activeChild.status === 'SAFE' ? colors.SUCCESS : colors.DANGER, backgroundColor: colors.BG_TERTIARY, marginRight: 16 }]}>
+                <ThemedText style={{ fontSize: 28, fontWeight: 'bold', color: colors.TEXT_PRIMARY }}>{activeChild.name.charAt(0)}</ThemedText>
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{activeChild.name}</ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                  <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>
+                    Updated: {formatTimeAgo(secondsAgo)}
+                  </ThemedText>
+                  <LastSynced lastSynced={new Date(Date.now() - 300000)} />
+                </View>
+              </View>
+              {/* Band Details Button */}
+              <TouchableOpacity 
+                onPress={() => router.push('/band-details')}
+                style={{ padding: 8, backgroundColor: colors.BG_TERTIARY, borderRadius: 12 }}
+              >
+                <Ionicons name="watch-outline" size={20} color={colors.ACCENT_TEAL} />
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{activeChild.name}</ThemedText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
-                <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Updated: {secondsAgo}s ago</ThemedText>
-                <LastSynced lastSynced={new Date(Date.now() - 300000)} />
+            
+            <View style={{ marginTop: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Band Battery</ThemedText>
+                <ThemedText style={{ fontSize: 12, color: colors.ACCENT_TEAL, fontWeight: '600' }}>{activeChild.band.battery}%</ThemedText>
+              </View>
+              <View style={{ height: 8, backgroundColor: colors.BG_TERTIARY, borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
+                <View style={{ width: `${activeChild.band.battery}%`, height: '100%', backgroundColor: colors.ACCENT_TEAL }} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.SUCCESS }} />
+                <ThemedText style={{ fontSize: 12, color: colors.SUCCESS, fontWeight: '600' }}>Connected</ThemedText>
               </View>
             </View>
-          </View>
-          
-          <View style={{ marginTop: 20 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Band Battery</ThemedText>
-              <ThemedText style={{ fontSize: 12, color: colors.ACCENT_TEAL, fontWeight: '600' }}>{activeChild.band.battery}%</ThemedText>
-            </View>
-            <View style={{ height: 8, backgroundColor: colors.BG_TERTIARY, borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
-              <View style={{ width: `${activeChild.band.battery}%`, height: '100%', backgroundColor: colors.ACCENT_TEAL }} />
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.SUCCESS }} />
-              <ThemedText style={{ fontSize: 12, color: colors.SUCCESS, fontWeight: '600' }}>Connected</ThemedText>
-            </View>
-          </View>
-        </GlassCard>
+          </GlassCard>
+        </View>
 
         {/* Vitals Row */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -263,10 +282,132 @@ export default function HomeDashboard() {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* Daily Summary Section */}
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>Today's Summary</ThemedText>
+        <GlassCard style={{ padding: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.SUCCESS + '20', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+                <Ionicons name="shield-checkmark" size={24} color={colors.SUCCESS} />
+              </View>
+              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>100%</ThemedText>
+              <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Safe Time</ThemedText>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.WARNING + '20', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+                <Ionicons name="footsteps" size={24} color={colors.WARNING} />
+              </View>
+              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>4,280</ThemedText>
+              <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Steps</ThemedText>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#3B82F6' + '20', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+                <Ionicons name="school" size={24} color="#3B82F6" />
+              </View>
+              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>6h</ThemedText>
+              <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>At School</ThemedText>
+            </View>
+          </View>
+        </GlassCard>
+
+        {/* Recent Activity Timeline */}
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>Recent Activity</ThemedText>
+        <GlassCard style={{ padding: 16, marginBottom: 20 }}>
+          <View style={{ gap: 14 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.SUCCESS + '20', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle" size={18} color={colors.SUCCESS} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 13, color: colors.TEXT_PRIMARY, fontWeight: '500' }}>Arrived at School</ThemedText>
+                <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>8:05 AM • Beacon House</ThemedText>
+              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.ACCENT_TEAL + '20', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="walk" size={18} color={colors.ACCENT_TEAL} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 13, color: colors.TEXT_PRIMARY, fontWeight: '500' }}>Left Home Zone</ThemedText>
+                <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>7:52 AM • Home</ThemedText>
+              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.WARNING + '20', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="moon" size={18} color={colors.WARNING} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 13, color: colors.TEXT_PRIMARY, fontWeight: '500' }}>Band entered sleep mode</ThemedText>
+                <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>11:30 PM • Last night</ThemedText>
+              </View>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            onPress={() => router.push('/activity')}
+            style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.BORDER, alignItems: 'center' }}
+          >
+            <ThemedText style={{ fontSize: 13, color: colors.ACCENT_TEAL, fontWeight: '600' }}>View All Activity →</ThemedText>
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* Emergency Contacts */}
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>Emergency Contacts</ThemedText>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          {[
+            { name: 'Fatima (Mother)', phone: '+92 300 1234567', icon: 'call' },
+            { name: 'Ahmed (Father)', phone: '+92 301 7654321', icon: 'call' },
+            { name: 'Dr. Khan', phone: '+92 310 9876543', icon: 'medical' }
+          ].map((contact, i) => (
+            <TouchableOpacity 
+              key={i} 
+              onPress={() => {
+                showToast(`Calling ${contact.name}...`, 'info');
+              }}
+              style={{ flex: 1, alignItems: 'center' }}
+            >
+              <View style={{ 
+                width: 56, height: 56, borderRadius: 28, 
+                backgroundColor: colors.BG_SECONDARY, 
+                justifyContent: 'center', alignItems: 'center', 
+                borderWidth: 1, borderColor: colors.BORDER,
+                marginBottom: 8
+              }}>
+                <Ionicons name={contact.icon as any} size={24} color={colors.DANGER} />
+              </View>
+              <ThemedText style={{ fontSize: 10, color: colors.TEXT_SECONDARY, fontWeight: '600', textAlign: 'center' }}>{contact.name.split(' ')[0]}</ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Quick Safety Actions (Replaces the fake schedule) */}
+
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 ,marginTop: 20}}>Quick Safety Actions</ThemedText>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity 
+            onPress={() => showToast('Sending ring command to band...', 'info')}
+            style={{ flex: 1, backgroundColor: colors.BG_SECONDARY, borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.BORDER }}
+          >
+            <Ionicons name="musical-notes" size={24} color={colors.ACCENT_TEAL} style={{ marginBottom: 8 }} />
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_PRIMARY, fontWeight: '600', textAlign: 'center' }}>Sound Alarm on Band</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={() => showToast('Requesting live location...', 'info')}
+            style={{ flex: 1, backgroundColor: colors.BG_SECONDARY, borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.BORDER }}
+          >
+            <Ionicons name="locate" size={24} color={colors.WARNING} style={{ marginBottom: 8 }} />
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_PRIMARY, fontWeight: '600', textAlign: 'center' }}>Refresh Live Location</ThemedText>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
