@@ -110,12 +110,10 @@ export default function HomeDashboard() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
-      <OfflineBanner />
-      
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
       <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 

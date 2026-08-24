@@ -1,21 +1,26 @@
 import { Tabs } from 'expo-router';
 import { useThemeStore } from '../../store/themeStore';
+import { useAlertsStore } from '../../store/alertsStore'; // Import the alerts store
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
-  const { colors, mode } = useThemeStore();
+  const { colors } = useThemeStore();
+  const { alerts } = useAlertsStore(); // Get the alerts data
+
+  // Calculate how many alerts are unread
+  const unreadCount = alerts.filter(a => !a.read).length;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: mode === 'dark' ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: colors.BG_SECONDARY, 
           borderTopWidth: 1,
           borderTopColor: colors.BORDER,
-          position: 'absolute',
-          elevation: 0,
-          height: 85,
+          elevation: 10,
+          zIndex: 100,
+          height: 90,
           paddingBottom: 25,
           paddingTop: 10,
         },
@@ -50,7 +55,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
           ),
-          tabBarBadge: 1,
+          // DYNAMIC BADGE: Shows the count if > 0, otherwise hides completely
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
           tabBarBadgeStyle: { 
             backgroundColor: colors.DANGER, 
             color: '#FFF', 

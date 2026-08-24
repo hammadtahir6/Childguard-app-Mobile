@@ -77,8 +77,8 @@ export default function SettingsScreen() {
   const totalZones = children.reduce((sum, child) => sum + child.safeZones.length, 0);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
         {/* Profile Header Card */}
         <GlassCard style={{ padding: 20, marginBottom: 20 }}>

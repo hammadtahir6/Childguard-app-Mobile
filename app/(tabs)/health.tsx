@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, ScrollView, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { ThemedText } from '../../components/ui/ThemedText';
 import { ThemedView } from '../../components/ui/ThemedView';
@@ -11,18 +12,17 @@ import { MotiView } from 'moti';
 
 const screenWidth = Dimensions.get('window').width;
 
-// Generate realistic mock data with SMART LABELS to prevent overlapping
+// Generate realistic mock data with SMART LABELS
 const generateMockData = (period: string, baseValue: number, variance: number) => {
   let dataPoints: number[] = [];
   let labels: string[] = [];
   
-  // Configuration for how many points and which labels to show
   const configs: Record<string, { count: number; labelStep: number; labelFormat: (i: number) => string }> = {
-    '1H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 5}m` }, // Show every 10 mins
-    '6H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 30}m` }, // Show every 30 mins
-    '24H': { count: 24, labelStep: 4, labelFormat: (i) => `${i}h` }, // Show every 4 hours (6h, 12h, 18h...)
-    '7D': { count: 7, labelStep: 1, labelFormat: (i) => `D${i + 1}` }, // Show every day
-    '30D': { count: 30, labelStep: 5, labelFormat: (i) => `D${i + 1}` }, // Show every 5 days (D5, D10...)
+    '1H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 5}m` }, 
+    '6H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 30}m` }, 
+    '24H': { count: 24, labelStep: 3, labelFormat: (i) => `${i}h` }, // Shows every 3 hours now
+    '7D': { count: 7, labelStep: 1, labelFormat: (i) => `D${i + 1}` }, 
+    '30D': { count: 30, labelStep: 5, labelFormat: (i) => `D${i + 1}` }, 
   };
   
   const config = configs[period] || configs['24H'];
@@ -31,7 +31,6 @@ const generateMockData = (period: string, baseValue: number, variance: number) =
     const variation = (Math.random() - 0.5) * variance * 2;
     dataPoints.push(Math.round((baseValue + variation) * 10) / 10);
     
-    // Only add text label at specific steps, otherwise empty string to save space
     if (i % config.labelStep === 0 || i === config.count - 1) {
       labels.push(config.labelFormat(i));
     } else {
@@ -54,16 +53,15 @@ export default function HealthScreen() {
   
   const periods = ['1H', '6H', '24H', '7D', '30D'];
   
-  // Base Chart Configuration - Adaptive to Theme
   const baseChartConfig = {
-    backgroundColor: colors.BG_SECONDARY, // FIX: Matches card background (White in light mode, Dark in dark mode)
+    backgroundColor: colors.BG_SECONDARY,
     backgroundGradientFrom: colors.BG_SECONDARY,
     backgroundGradientTo: colors.BG_SECONDARY,
     decimalCount: 1,
-    labelColor: (opacity = 1) => colors.TEXT_SECONDARY, // FIX: Text color adapts to theme
+    labelColor: (opacity = 1) => colors.TEXT_SECONDARY,
     style: { borderRadius: 16 },
-    propsForBackgroundLines: { stroke: colors.BORDER, strokeDasharray: '4 4' }, // FIX: Grid lines visible in both themes
-    propsForLabels: { fontSize: 10, fontWeight: '600' }, // Smaller font for labels
+    propsForBackgroundLines: { stroke: colors.BORDER, strokeDasharray: '4 4' },
+    propsForLabels: { fontSize: 10, fontWeight: '600' },
   };
 
   const getStats = (data: number[]) => {
@@ -77,9 +75,12 @@ export default function HealthScreen() {
   const spo2Stats = getStats(spo2Data.dataPoints);
   const tempStats = getStats(tempData.dataPoints);
 
+  // Fixed wide width for scrolling
+  const chartWidth = 600; 
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
         {/* Header */}
         <View style={{ marginBottom: 24 }}>
@@ -139,25 +140,25 @@ export default function HealthScreen() {
               </View>
             </View>
 
-            <LineChart
-              data={{
-                labels: heartRateData.labels,
-                datasets: [{ data: heartRateData.dataPoints }],
-              }}
-              width={screenWidth - 80}
-              height={180}
-              yAxisLabel=""
-              yAxisSuffix=""
-              yAxisInterval={1}
-              chartConfig={{
-                ...baseChartConfig,
-                color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' }, // Cleaner dots
-              }}
-              bezier
-              style={{ borderRadius: 16, paddingRight: 0 }}
-              fromZero={false}
-            />
+            {/* Scrollable Chart Container */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
+              <LineChart
+                data={{ labels: heartRateData.labels, datasets: [{ data: heartRateData.dataPoints }] }}
+                width={chartWidth} // Wider than screen to enable scroll
+                height={180}
+                yAxisLabel=""
+                yAxisSuffix=""
+                yAxisInterval={1}
+                chartConfig={{
+                  ...baseChartConfig,
+                  color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' },
+                }}
+                bezier
+                style={{ borderRadius: 16 }}
+                fromZero={false}
+              />
+            </ScrollView>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.BORDER }}>
               <View style={{ alignItems: 'center' }}>
@@ -197,25 +198,24 @@ export default function HealthScreen() {
               </View>
             </View>
 
-            <LineChart
-              data={{
-                labels: spo2Data.labels,
-                datasets: [{ data: spo2Data.dataPoints }],
-              }}
-              width={screenWidth - 80}
-              height={180}
-              yAxisLabel=""
-              yAxisSuffix="%"
-              yAxisInterval={1}
-              chartConfig={{
-                ...baseChartConfig,
-                color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-                propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' },
-              }}
-              bezier
-              style={{ borderRadius: 16, paddingRight: 0 }}
-              fromZero={false}
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
+              <LineChart
+                data={{ labels: spo2Data.labels, datasets: [{ data: spo2Data.dataPoints }] }}
+                width={chartWidth}
+                height={180}
+                yAxisLabel=""
+                yAxisSuffix="%"
+                yAxisInterval={1}
+                chartConfig={{
+                  ...baseChartConfig,
+                  color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' },
+                }}
+                bezier
+                style={{ borderRadius: 16 }}
+                fromZero={false}
+              />
+            </ScrollView>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.BORDER }}>
               <View style={{ alignItems: 'center' }}>
@@ -255,25 +255,24 @@ export default function HealthScreen() {
               </View>
             </View>
 
-            <LineChart
-              data={{
-                labels: tempData.labels,
-                datasets: [{ data: tempData.dataPoints }],
-              }}
-              width={screenWidth - 80}
-              height={180}
-              yAxisLabel=""
-              yAxisSuffix="°"
-              yAxisInterval={1}
-              chartConfig={{
-                ...baseChartConfig,
-                color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
-                propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' },
-              }}
-              bezier
-              style={{ borderRadius: 16, paddingRight: 0 }}
-              fromZero={false}
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
+              <LineChart
+                data={{ labels: tempData.labels, datasets: [{ data: tempData.dataPoints }] }}
+                width={chartWidth}
+                height={180}
+                yAxisLabel=""
+                yAxisSuffix="°"
+                yAxisInterval={1}
+                chartConfig={{
+                  ...baseChartConfig,
+                  color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '0', stroke: 'transparent' },
+                }}
+                bezier
+                style={{ borderRadius: 16 }}
+                fromZero={false}
+              />
+            </ScrollView>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.BORDER }}>
               <View style={{ alignItems: 'center' }}>

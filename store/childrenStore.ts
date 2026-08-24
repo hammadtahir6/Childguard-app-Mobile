@@ -53,9 +53,9 @@ interface ChildrenState {
   addChild: (child: Child) => void;
   deleteChild: (id: string) => void;
   updateChildSafeZones: (id: string, safeZones: SafeZone[]) => void;
+  disconnectBand: (id: string) => void; // This was missing!
 }
 
-// Initial dummy data - ALWAYS keep at least one child
 const initialChildren: Child[] = [
   {
     id: '1',
@@ -97,10 +97,9 @@ export const useChildrenStore = create<ChildrenState>((set) => ({
   deleteChild: (id) =>
     set((state) => {
       const newChildren = state.children.filter((c) => c.id !== id);
-      // NEVER allow empty children array
       if (newChildren.length === 0) {
         return {
-          children: initialChildren, // Reset to default
+          children: initialChildren,
           activeChildId: initialChildren[0].id,
         };
       }
@@ -114,6 +113,14 @@ export const useChildrenStore = create<ChildrenState>((set) => ({
     set((state) => ({
       children: state.children.map((child) =>
         child.id === id ? { ...child, safeZones } : child
+      ),
+    })),
+
+  // This is the new function with proper typing
+  disconnectBand: (id: string) =>
+    set((state) => ({
+      children: state.children.map((child) =>
+        child.id === id ? { ...child, band: { ...child.band, connected: false, battery: 0 } } : child
       ),
     })),
 }));
