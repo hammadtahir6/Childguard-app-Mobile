@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/authStore';
+import { useToastStore } from '../../store/toastStore';
 import { ThemedText } from '../../components/ui/ThemedText';
-import { ThemedView } from '../../components/ui/ThemedView';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useThemeStore } from '../../store/themeStore';
@@ -11,9 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 const COUNTRIES = [
   { code: '+1', flag: '🇺🇸', name: 'USA' },
   { code: '+44', flag: '🇬🇧', name: 'UK' },
-  { code: '+92', flag: '🇵', name: 'Pakistan' },
-  { code: '+91', flag: '🇮', name: 'India' },
-  { code: '+971', flag: '🇪', name: 'UAE' },
+  { code: '+92', flag: '🇵🇰', name: 'Pakistan' },
+  { code: '+91', flag: '🇮🇳', name: 'India' },
+  { code: '+971', flag: '🇦🇪', name: 'UAE' },
   { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
   { code: '+1', flag: '🇨🇦', name: 'Canada' },
   { code: '+61', flag: '🇦🇺', name: 'Australia' },
@@ -24,12 +26,42 @@ const COUNTRIES = [
 export default function Register() {
   const router = useRouter();
   const { colors } = useThemeStore();
+  const { register } = useAuthStore();
+  const { showToast } = useToastStore();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2]);
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [city, setCity] = useState('');
+
+  const handleRegister = () => {
+    if (!name || !email || !phone || !password || !confirmPassword || !city) {
+      showToast('Please fill in all fields', 'warning');
+      return;
+    }
+    if (password !== confirmPassword) {
+      showToast('Passwords do not match', 'error');
+      return;
+    }
+    register(name, email);
+    showToast('Account created successfully!', 'success');
+    router.replace('/(tabs)');
+  };
+
+  const handleGoogleRegister = () => {
+    register('User', 'user@gmail.com');
+    showToast('Registered with Google', 'success');
+    router.replace('/(tabs)');
+  };
+
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ padding: 24 }}>
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
@@ -44,7 +76,7 @@ export default function Register() {
               <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>Full Name</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER }}>
                 <Ionicons name="person-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginLeft: 12, marginRight: 8 }} />
-                <TextInput placeholder="Enter your full name" placeholderTextColor={colors.TEXT_SECONDARY} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
+                <TextInput placeholder="Enter your full name" placeholderTextColor={colors.TEXT_SECONDARY} value={name} onChangeText={setName} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
               </View>
             </View>
             
@@ -52,7 +84,7 @@ export default function Register() {
               <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>Email Address</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER }}>
                 <Ionicons name="mail-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginLeft: 12, marginRight: 8 }} />
-                <TextInput placeholder="Enter your email address" placeholderTextColor={colors.TEXT_SECONDARY} keyboardType="email-address" autoCapitalize="none" style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
+                <TextInput placeholder="Enter your email address" placeholderTextColor={colors.TEXT_SECONDARY} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
               </View>
             </View>
             
@@ -64,7 +96,7 @@ export default function Register() {
                   <ThemedText style={{ fontSize: 14, color: colors.TEXT_PRIMARY, marginRight: 4 }}>{selectedCountry.code}</ThemedText>
                   <Ionicons name="chevron-down" size={16} color={colors.TEXT_SECONDARY} />
                 </TouchableOpacity>
-                <TextInput placeholder="Enter your phone number" placeholderTextColor={colors.TEXT_SECONDARY} keyboardType="phone-pad" style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, marginLeft: 8, color: colors.TEXT_PRIMARY }]} />
+                <TextInput placeholder="Enter your phone number" placeholderTextColor={colors.TEXT_SECONDARY} keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, marginLeft: 8, color: colors.TEXT_PRIMARY }]} />
               </View>
             </View>
             
@@ -72,7 +104,7 @@ export default function Register() {
               <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>Password</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER }}>
                 <Ionicons name="lock-closed-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginLeft: 12, marginRight: 8 }} />
-                <TextInput secureTextEntry={!showPassword} placeholder="Enter your password" placeholderTextColor={colors.TEXT_SECONDARY} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
+                <TextInput secureTextEntry={!showPassword} placeholder="Enter your password" placeholderTextColor={colors.TEXT_SECONDARY} value={password} onChangeText={setPassword} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 12, marginRight: 4 }}>
                   <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.TEXT_SECONDARY} />
                 </TouchableOpacity>
@@ -83,7 +115,7 @@ export default function Register() {
               <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>Confirm Password</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER }}>
                 <Ionicons name="lock-closed-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginLeft: 12, marginRight: 8 }} />
-                <TextInput secureTextEntry={!showPassword} placeholder="Confirm your password" placeholderTextColor={colors.TEXT_SECONDARY} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
+                <TextInput secureTextEntry={!showPassword} placeholder="Confirm your password" placeholderTextColor={colors.TEXT_SECONDARY} value={confirmPassword} onChangeText={setConfirmPassword} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
               </View>
             </View>
             
@@ -91,13 +123,13 @@ export default function Register() {
               <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>City</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER }}>
                 <Ionicons name="location-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginLeft: 12, marginRight: 8 }} />
-                <TextInput placeholder="Enter your city" placeholderTextColor={colors.TEXT_SECONDARY} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
+                <TextInput placeholder="Enter your city" placeholderTextColor={colors.TEXT_SECONDARY} value={city} onChangeText={setCity} style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} />
               </View>
             </View>
           </GlassCard>
           
           <View style={{ marginTop: 32, gap: 16 }}>
-            <GradientButton title="Create Account" onPress={() => router.push('/pair-band')} />
+            <GradientButton title="Create Account" onPress={handleRegister} />
             <ThemedText style={{ textAlign: 'center', fontSize: 11, color: colors.TEXT_SECONDARY }}>By creating an account you agree to our Terms & Privacy Policy</ThemedText>
             
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -106,7 +138,7 @@ export default function Register() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.BORDER }} />
             </View>
             
-            <TouchableOpacity style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
+            <TouchableOpacity onPress={handleGoogleRegister} style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
               <Ionicons name="logo-google" size={20} color={colors.TEXT_PRIMARY} />
               <ThemedText weight="medium" style={{ color: colors.TEXT_PRIMARY }}>Continue with Google</ThemedText>
             </TouchableOpacity>
@@ -139,11 +171,10 @@ export default function Register() {
           </View>
         </View>
       </Modal>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   input: { height: 50, borderRadius: 12, paddingHorizontal: 16, fontSize: 15 },
 });

@@ -11,20 +11,37 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import Toast from '../components/Toast';
 
-SplashScreen.preventAutoHideAsync();
+// Prevent the splash screen from auto-hiding before assets/fonts are loaded.
+// .catch() prevents unhandled promise rejections during hot-reloads.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* Ignore error if already hidden */
+});
 
 export default function RootLayout() {
   const { colors, mode } = useThemeStore();
 
   const [fontsLoaded] = useFonts({
-    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, SpaceMono_400Regular,
+    Inter_400Regular, 
+    Inter_500Medium, 
+    Inter_600SemiBold, 
+    Inter_700Bold, 
+    SpaceMono_400Regular,
   });
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
+    if (fontsLoaded) {
+      // Hide the splash screen once fonts are loaded.
+      // .catch() prevents warnings if the splash screen is already hidden during dev reloads.
+      SplashScreen.hideAsync().catch(() => {
+        /* Ignore error if already hidden */
+      });
+    }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+  // Return null to keep the splash screen visible while fonts load
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -48,7 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="add-child" options={{ presentation: 'modal' }} />
             <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
             
-            {/* NEW SETTINGS ROUTES */}
+            {/* SETTINGS ROUTES */}
             <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
             <Stack.Screen name="language-select" options={{ presentation: 'modal' }} />
             <Stack.Screen name="notification-prefs" options={{ presentation: 'modal' }} />

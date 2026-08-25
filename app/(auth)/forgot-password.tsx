@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useToastStore } from '../../store/toastStore';
 import { ThemedText } from '../../components/ui/ThemedText';
-import { ThemedView } from '../../components/ui/ThemedView';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useThemeStore } from '../../store/themeStore';
@@ -11,13 +12,24 @@ import { Ionicons } from '@expo/vector-icons';
 export default function ForgotPassword() {
   const router = useRouter();
   const { colors } = useThemeStore();
+  const { showToast } = useToastStore();
   const [email, setEmail] = useState('');
   const [step, setStep] = useState(1);
 
-  const handleSendReset = () => setStep(2);
+  const handleSendReset = () => {
+    if (!email) {
+      showToast('Please enter your email address', 'warning');
+      return;
+    }
+    showToast(`Reset link sent to ${email}`, 'success');
+    
+    setTimeout(() => {
+      router.replace('/(auth)/login');
+    }, 2000);
+  };
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ padding: 24 }}>
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
@@ -54,6 +66,8 @@ export default function ForgotPassword() {
               <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.SUCCESS + '20', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="checkmark" size={48} color={colors.SUCCESS} />
               </View>
+              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY, textAlign: 'center' }}>Email Sent!</ThemedText>
+              <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, textAlign: 'center' }}>Redirecting to login...</ThemedText>
             </GlassCard>
           )}
           
@@ -72,11 +86,10 @@ export default function ForgotPassword() {
           </View>
         </View>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   input: { height: 50, borderRadius: 12, paddingHorizontal: 16, fontSize: 15 },
 });

@@ -1,20 +1,43 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/authStore';
+import { useToastStore } from '../../store/toastStore';
 import { ThemedText } from '../../components/ui/ThemedText';
-import { ThemedView } from '../../components/ui/ThemedView';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useThemeStore } from '../../store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Login() {
+  const { login } = useAuthStore();
+  const { showToast } = useToastStore();
   const router = useRouter();
   const { colors } = useThemeStore();
+  
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = () => {
+    if (!email || !password) {
+      showToast('Please fill in all fields', 'warning');
+      return;
+    }
+    login(email);
+    showToast('Login successful!', 'success');
+    router.replace('/(tabs)');
+  };
+
+  const handleGoogleLogin = () => {
+    login('user@gmail.com');
+    showToast('Logged in with Google', 'success');
+    router.replace('/(tabs)');
+  };
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ padding: 24 }}>
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
@@ -32,6 +55,8 @@ export default function Login() {
                 <TextInput 
                   placeholder="Enter your email address" 
                   placeholderTextColor={colors.TEXT_SECONDARY} 
+                  value={email}
+                  onChangeText={setEmail}
                   style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} 
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -47,6 +72,8 @@ export default function Login() {
                   secureTextEntry={!showPassword} 
                   placeholder="Enter your password" 
                   placeholderTextColor={colors.TEXT_SECONDARY} 
+                  value={password}
+                  onChangeText={setPassword}
                   style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: colors.TEXT_PRIMARY }]} 
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 12, marginRight: 4 }}>
@@ -61,7 +88,7 @@ export default function Login() {
           </GlassCard>
           
           <View style={{ marginTop: 32, gap: 16 }}>
-            <GradientButton title="Sign In" onPress={() => router.replace('/pair-band')} />
+            <GradientButton title="Sign In" onPress={handleLogin} />
             
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: colors.BORDER }} />
@@ -69,7 +96,7 @@ export default function Login() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.BORDER }} />
             </View>
             
-            <TouchableOpacity style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
+            <TouchableOpacity onPress={handleGoogleLogin} style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
               <Ionicons name="logo-google" size={20} color={colors.TEXT_PRIMARY} />
               <ThemedText weight="medium" style={{ color: colors.TEXT_PRIMARY }}>Continue with Google</ThemedText>
             </TouchableOpacity>
@@ -82,7 +109,7 @@ export default function Login() {
           </View>
         </View>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
