@@ -16,15 +16,18 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../store/themeStore';
 import { useChildrenStore } from '../../store/childrenStore';
-import { useToastStore } from '../../store/toastStore'; // ✅ ADDED THIS IMPORT
+import { useToastStore } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 import { ThemedText } from '../../components/ui/ThemedText';
 import { GlassCard } from '../../components/ui/GlassCard';
 import OfflineBanner from '../../components/OfflineBanner';
 import LastSynced from '../../components/LastSynced';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../../api/config';
 
 const { width } = Dimensions.get('window');
 
-// Helper: Convert seconds to readable time
 const formatTimeAgo = (seconds: number): string => {
   if (seconds < 60) return `${seconds}s ago`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -34,15 +37,59 @@ const formatTimeAgo = (seconds: number): string => {
 export default function HomeDashboard() {
   const router = useRouter();
   const { colors, toggleTheme, mode } = useThemeStore();
-  const { activeChildId, setActiveChild, children, updateVitals, deleteChild } = useChildrenStore();
-  const { showToast } = useToastStore(); // ✅ ADDED THIS HOOK
-  
-  const activeChild = children.length > 0 
-    ? (children.find(c => c.id === activeChildId) || children[0])
-    : null;
+  const { children, activeChildId, setActiveChild, updateVitals, deleteChild, setChildren } = useChildrenStore();
+  const { showToast } = useToastStore();
+  const { user } = useAuthStore();
   
   const [secondsAgo, setSecondsAgo] = useState(2);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState('Loading...');
+
+  // Fetch real user name from auth store
+  useEffect(() => {
+    if (user?.full_name) {
+      setUserName(user.full_name);
+    }
+  }, [user]);
+
+  // Check for children on mount and fetch real data from backend
+  useEffect(() => {
+    const checkAndFetchChildren = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) {
+          router.replace('/(auth)/login');
+          return;
+        }
+
+        const response = await axios.get(`${BASE_URL}/children/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // If no children, redirect to Add Child
+        if (response.data.length === 0) {
+          router.replace('/add-child');
+          return;
+        }
+
+        // Update store with real backend data
+        setChildren(response.data);
+        if (response.data.length > 0 && !activeChildId) {
+          setActiveChild(response.data[0].id);
+        }
+      } catch (error) {
+        console.error('Error fetching children:', error);
+        // Fallback: redirect to add child if API fails
+        router.replace('/add-child');
+      }
+    };
+
+    checkAndFetchChildren();
+  }, []);
+
+  const activeChild = children.length > 0 
+    ? (children.find(c => c.id === activeChildId) || children[0])
+    : null;
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -54,14 +101,16 @@ export default function HomeDashboard() {
     }, 1500);
   };
 
+  // ✅ FIXED: Added null check for activeChildId to prevent TypeScript error
   useEffect(() => {
-    if (!activeChild) return;
+    if (!activeChild || !activeChildId) return;
+    
     const interval = setInterval(() => {
       setSecondsAgo(prev => prev + 5);
       updateVitals(activeChildId, {
-        heartRate: activeChild.vitals.heartRate + Math.floor(Math.random() * 7) - 3,
-        spo2: Math.min(100, Math.max(95, activeChild.vitals.spo2 + Math.floor(Math.random() * 3) - 1)),
-        temperature: parseFloat((activeChild.vitals.temperature + (Math.random() * 0.2 - 0.1)).toFixed(1)),
+        heartRate: (activeChild.vitals?.heartRate || 85) + Math.floor(Math.random() * 7) - 3,
+        spo2: Math.min(100, Math.max(95, (activeChild.vitals?.spo2 || 98) + Math.floor(Math.random() * 3) - 1)),
+        temperature: parseFloat(((activeChild.vitals?.temperature || 36.8) + (Math.random() * 0.2 - 0.1)).toFixed(1)),
       });
     }, 5000);
     return () => clearInterval(interval);
@@ -85,7 +134,7 @@ export default function HomeDashboard() {
     );
   };
 
-  // Empty state
+  // Empty state fallback
   if (!activeChild || children.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
@@ -109,10 +158,10 @@ export default function HomeDashboard() {
   }
 
   const vitalsData = [
-    { label: 'Heart Rate', value: activeChild.vitals.heartRate, unit: 'BPM', icon: 'heart', color: colors.DANGER },
-    { label: 'Blood Oxygen', value: activeChild.vitals.spo2, unit: '%', icon: 'pulse', color: '#3B82F6' },
-    { label: 'Temperature', value: activeChild.vitals.temperature, unit: '°C', icon: 'thermometer', color: colors.WARNING },
-    { label: 'Location', value: activeChild.location.inSafeZone ? 'In Zone' : 'Outside', unit: '', icon: 'location', color: colors.ACCENT_TEAL }
+    { label: 'Heart Rate', value: activeChild.vitals?.heartRate || 85, unit: 'BPM', icon: 'heart', color: colors.DANGER },
+    { label: 'Blood Oxygen', value: activeChild.vitals?.spo2 || 98, unit: '%', icon: 'pulse', color: '#3B82F6' },
+    { label: 'Temperature', value: activeChild.vitals?.temperature || 36.8, unit: '°C', icon: 'thermometer', color: colors.WARNING },
+    { label: 'Location', value: activeChild.location?.inSafeZone ? 'In Zone' : 'Outside', unit: '', icon: 'location', color: colors.ACCENT_TEAL }
   ];
 
   return (
@@ -135,7 +184,7 @@ export default function HomeDashboard() {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <ThemedText style={{ color: colors.TEXT_SECONDARY, fontSize: 13 }}>Good Morning,</ThemedText>
-            <ThemedText weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>Ahmed Khan</ThemedText>
+            <ThemedText weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>{userName}</ThemedText>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
@@ -186,8 +235,19 @@ export default function HomeDashboard() {
             </View>
           ))}
           
+          {/* Add Child Button with QR Option */}
           <TouchableOpacity 
-            onPress={() => router.push('/add-child')}
+            onPress={() => {
+              Alert.alert(
+                'Add Child',
+                'How would you like to add a child?',
+                [
+                  { text: 'Scan QR Code', onPress: () => router.push('/qr-scan') },
+                  { text: 'Manual Entry', onPress: () => router.push('/add-child') },
+                  { text: 'Cancel', style: 'cancel' }
+                ]
+              );
+            }}
             style={[styles.childCard, { backgroundColor: colors.BG_SECONDARY, borderStyle: 'dashed', borderWidth: 2, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center' }]}
           >
             <Ionicons name="add" size={24} color={colors.ACCENT_TEAL} />
@@ -195,7 +255,7 @@ export default function HomeDashboard() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Status Hero Card - Shadow now contained */}
+        {/* Status Hero Card */}
         <View style={{ overflow: 'hidden', borderRadius: 20, marginBottom: 20 }}>
           <GlassCard glowColor={activeChild.status === 'SAFE' ? colors.ACCENT_TEAL : colors.DANGER} style={{ padding: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -211,7 +271,6 @@ export default function HomeDashboard() {
                   <LastSynced lastSynced={new Date(Date.now() - 300000)} />
                 </View>
               </View>
-              {/* Band Details Button */}
               <TouchableOpacity 
                 onPress={() => router.push('/band-details')}
                 style={{ padding: 8, backgroundColor: colors.BG_TERTIARY, borderRadius: 12 }}
@@ -223,10 +282,10 @@ export default function HomeDashboard() {
             <View style={{ marginTop: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                 <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Band Battery</ThemedText>
-                <ThemedText style={{ fontSize: 12, color: colors.ACCENT_TEAL, fontWeight: '600' }}>{activeChild.band.battery}%</ThemedText>
+                <ThemedText style={{ fontSize: 12, color: colors.ACCENT_TEAL, fontWeight: '600' }}>{activeChild.band?.battery || 100}%</ThemedText>
               </View>
               <View style={{ height: 8, backgroundColor: colors.BG_TERTIARY, borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
-                <View style={{ width: `${activeChild.band.battery}%`, height: '100%', backgroundColor: colors.ACCENT_TEAL }} />
+                <View style={{ width: `${activeChild.band?.battery || 100}%`, height: '100%', backgroundColor: colors.ACCENT_TEAL }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.SUCCESS }} />
@@ -259,15 +318,15 @@ export default function HomeDashboard() {
           <MapView 
             style={{ width: '100%', height: '100%' }}
             initialRegion={{
-              latitude: activeChild.location.lat,
-              longitude: activeChild.location.lng,
+              latitude: activeChild.location?.lat || 34.0151,
+              longitude: activeChild.location?.lng || 71.5249,
               latitudeDelta: 0.005,
               longitudeDelta: 0.005,
             }}
             scrollEnabled={false}
             zoomEnabled={false}
           >
-            <Marker coordinate={{ latitude: activeChild.location.lat, longitude: activeChild.location.lng }}>
+            <Marker coordinate={{ latitude: activeChild.location?.lat || 34.0151, longitude: activeChild.location?.lng || 71.5249 }}>
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.ACCENT_TEAL, borderWidth: 3, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
                 <ThemedText style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF' }}>{activeChild.name.charAt(0)}</ThemedText>
               </View>
@@ -382,9 +441,8 @@ export default function HomeDashboard() {
           ))}
         </View>
 
-        {/* Quick Safety Actions (Replaces the fake schedule) */}
-
-        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 ,marginTop: 20}}>Quick Safety Actions</ThemedText>
+        {/* Quick Safety Actions */}
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12, marginTop: 20 }}>Quick Safety Actions</ThemedText>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <TouchableOpacity 
             onPress={() => showToast('Sending ring command to band...', 'info')}
@@ -407,7 +465,6 @@ export default function HomeDashboard() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

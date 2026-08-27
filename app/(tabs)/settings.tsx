@@ -1,41 +1,49 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, Switch, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ui/ThemedText';
-import { ThemedView } from '../../components/ui/ThemedView';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useThemeStore } from '../../store/themeStore';
-import { useUserStore } from '../../store/userStore';
-import { useSettingsStore } from '../../store/settingsStore';
 import { useChildrenStore } from '../../store/childrenStore';
 import { useToastStore } from '../../store/toastStore';
-import { useAuthStore } from '../../store/authStore'; // Added Auth Store
+import { useAuthStore } from '../../store/authStore';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../../api/config';
 
 const LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', ar: 'Arabic', es: 'Spanish',
   fr: 'French', zh: 'Chinese', hi: 'Hindi', tr: 'Turkish'
 };
 
-const INTERVAL_LABELS: Record<number, string> = {
-  15: '15 seconds', 30: '30 seconds', 60: '1 minute',
-  300: '5 minutes', 600: '10 minutes', 1800: '30 minutes'
-};
-
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, mode, toggleTheme } = useThemeStore();
-  
-  // FIX: Renamed 'logout' to 'clearUserData' to avoid naming collision
-  const { profile, logout: clearUserData } = useUserStore();
-  
-  const { language, locationInterval } = useSettingsStore();
   const { children } = useChildrenStore();
   const { showToast } = useToastStore();
+  const { user, logout } = useAuthStore();
   
-  // FIX: Renamed 'logout' to 'clearAuth' to avoid naming collision
-  const { logout: clearAuth } = useAuthStore();
+  const [userData, setUserData] = useState<any>(null);
+
+  // Fetch real user data from backend
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) return;
+        
+        const response = await axios.get(`${BASE_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUserData(response.data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    fetchUserData();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -46,9 +54,8 @@ export default function SettingsScreen() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
-            clearUserData(); // Clears profile data
-            clearAuth();     // Clears login state
+          onPress: async () => {
+            await logout();
             showToast('Signed out successfully', 'info');
             router.replace('/onboarding');
           }
@@ -56,6 +63,11 @@ export default function SettingsScreen() {
       ]
     );
   };
+
+  // Safe calculation for total zones (prevents crash if data is undefined)
+  const totalZones = (children || []).reduce((sum, child) => {
+    return sum + (child.safeZones?.length || 0);
+  }, 0);
 
   const SettingRow = ({ icon, title, subtitle, onPress, rightElement, iconColor }: any) => (
     <TouchableOpacity
@@ -82,10 +94,8 @@ export default function SettingsScreen() {
 
   const Divider = () => <View style={{ height: 1, backgroundColor: colors.BORDER, marginHorizontal: 16 }} />;
 
-  const totalZones = children.reduce((sum, child) => sum + child.safeZones.length, 0);
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
         {/* Profile Header Card */}
@@ -97,20 +107,20 @@ export default function SettingsScreen() {
               justifyContent: 'center', alignItems: 'center'
             }}>
               <ThemedText weight="bold" style={{ fontSize: 24, color: '#FFF' }}>
-                {profile.name.charAt(0)}
+                {(userData?.full_name || user?.full_name || 'U').charAt(0)}
               </ThemedText>
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>
-                {profile.name}
+                {userData?.full_name || user?.full_name || 'Loading...'}
               </ThemedText>
               <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY, marginTop: 2 }}>
-                {profile.email}
+                {userData?.email || user?.email || ''}
               </ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                 <Ionicons name="shield-checkmark" size={12} color={colors.SUCCESS} />
                 <ThemedText style={{ fontSize: 11, color: colors.SUCCESS, fontWeight: '600' }}>
-                  {profile.role}
+                  Parent Account
                 </ThemedText>
               </View>
             </View>
@@ -161,8 +171,8 @@ export default function SettingsScreen() {
           <SettingRow
             icon="language-outline"
             title="Language"
-            subtitle={LANGUAGES[language] || 'English'}
-            onPress={() => router.push('/language-select')}
+            subtitle={LANGUAGES['en'] || 'English'}
+            onPress={() => showToast('Language settings coming soon', 'info')}
             iconColor="#3B82F6"
           />
           <Divider />
@@ -184,12 +194,12 @@ export default function SettingsScreen() {
             icon="notifications-outline"
             title="Notification Preferences"
             subtitle="Control alerts & priorities"
-            onPress={() => router.push('/notification-prefs')}
+            onPress={() => showToast('Notification settings coming soon', 'info')}
             iconColor="#EF4444"
           />
         </GlassCard>
 
-        {/* TRACKING Section */}
+        {/* TRACKING & SAFETY Section */}
         <ThemedText weight="semibold" style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 8, marginLeft: 4, letterSpacing: 1 }}>
           TRACKING & SAFETY
         </ThemedText>
@@ -197,8 +207,8 @@ export default function SettingsScreen() {
           <SettingRow
             icon="navigate-outline"
             title="Location Update Interval"
-            subtitle={`Every ${INTERVAL_LABELS[locationInterval]}`}
-            onPress={() => router.push('/location-timer')}
+            subtitle="Every 5 minutes"
+            onPress={() => showToast('Location timer coming soon', 'info')}
             iconColor="#10B981"
           />
           <Divider />
@@ -213,7 +223,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="people-outline"
             title="Emergency Contacts"
-            subtitle="3 contacts added"
+            subtitle="Manage contacts"
             onPress={() => router.push('/emergency-contacts')}
             iconColor="#EF4444"
           />
@@ -265,7 +275,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <ThemedText style={{ textAlign: 'center', color: colors.TEXT_SECONDARY, fontSize: 12, marginTop: 24 }}>
-          ChildGuard v1.0.0 • Built for child safety
+          ChildGuard v1.0.0 • Made for child safety
         </ThemedText>
 
       </ScrollView>

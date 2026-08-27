@@ -1,104 +1,114 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MotiView } from 'moti';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useThemeStore } from '../store/themeStore';
+import { useToastStore } from '../store/toastStore';
 import { ThemedText } from '../components/ui/ThemedText';
-import { ThemedView } from '../components/ui/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
-
-export default function QRScan() {
+export default function QRScanScreen() {
   const router = useRouter();
-  const [scanned, setScanned] = useState(false);
+  const { colors } = useThemeStore();
+  const { showToast } = useToastStore();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scanning, setScanning] = useState(true);
 
-  // Simulate scan after 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setScanned(true);
-      // In a real app, this would pass the scanned code back
-      setTimeout(() => router.back(), 1000);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+    if (!scanning) return;
+    setScanning(false);
+    
+    showToast('QR Code scanned!', 'success');
+    
+    // Process the QR code data (band ID or child ID)
+    console.log('Scanned QR:', data);
+    
+    // Navigate based on QR data - for demo, just go to pair-band
+    setTimeout(() => {
+      // Extract child ID from QR data if present
+      const childId = data.split(':')[1] || '';
+      if (childId) {
+        router.replace(`/pair-band?childId=${childId}`);
+      } else {
+        router.back();
+      }
+    }, 1000);
+  };
+
+  if (!permission) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY, justifyContent: 'center', alignItems: 'center' }}>
+        <ThemedText>Requesting camera permission...</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Ionicons name="camera-outline" size={80} color={colors.TEXT_SECONDARY} />
+        <ThemedText weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY, marginTop: 20, marginBottom: 8 }}>
+          Camera Permission Required
+        </ThemedText>
+        <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, textAlign: 'center', marginBottom: 24 }}>
+          We need camera access to scan QR codes on bands
+        </ThemedText>
+        <TouchableOpacity 
+          onPress={requestPermission}
+          style={{ backgroundColor: colors.ACCENT_TEAL, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14 }}
+        >
+          <ThemedText weight="bold" style={{ color: '#FFF', fontSize: 16 }}>Grant Permission</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+          <ThemedText style={{ color: colors.TEXT_SECONDARY }}>Cancel</ThemedText>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.viewfinder}>
-        <View style={[styles.corner, { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderColor: '#00D4AA' }]} />
-        <View style={[styles.corner, { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderColor: '#00D4AA' }]} />
-        <View style={[styles.corner, { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: '#00D4AA' }]} />
-        <View style={[styles.corner, { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderColor: '#00D4AA' }]} />
-        
-        <MotiView 
-          from={{ top: '10%' }} 
-          animate={{ top: '90%' }} 
-          transition={{ type: 'timing', duration: 2000, loop: true }}
-          style={styles.laser} 
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top', 'bottom']}>
+      <View style={{ flex: 1 }}>
+        <CameraView
+          style={{ flex: 1 }}
+          facing="back"
+          onBarcodeScanned={scanning ? handleBarCodeScanned : undefined}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr', 'pdf417'],
+          }}
         />
-      </View>
+        
+        {/* Overlay */}
+        <View style={StyleSheet.absoluteFillObject}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 250, height: 250, borderWidth: 3, borderColor: colors.ACCENT_TEAL, borderRadius: 20 }} />
+            <ThemedText weight="bold" style={{ fontSize: 16, color: '#FFF', marginTop: 20 }}>
+              Scan Band QR Code
+            </ThemedText>
+            <ThemedText style={{ fontSize: 14, color: '#FFF', marginTop: 8, opacity: 0.8 }}>
+              Position the QR code within the frame
+            </ThemedText>
+          </View>
+        </View>
 
-      <View style={styles.bottomContainer}>
-        <ThemedText style={styles.instructionText}>
-          {scanned ? 'QR Code Scanned!' : 'Align the QR code within the frame'}
-        </ThemedText>
-      </View>
+        {/* Header */}
+        <View style={{ position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+            <Ionicons name="close" size={32} color="#FFF" />
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity 
-        onPress={() => router.back()} 
-        style={styles.closeButton}
-      >
-        <Ionicons name="close" size={24} color="#FFF" />
-      </TouchableOpacity>
-    </ThemedView>
+        {/* Bottom Controls */}
+        <View style={{ padding: 24, paddingBottom: 40 }}>
+          <TouchableOpacity 
+            onPress={() => router.push('/pair-band')}
+            style={{ backgroundColor: colors.ACCENT_TEAL, paddingVertical: 16, borderRadius: 14, alignItems: 'center' }}
+          >
+            <ThemedText weight="bold" style={{ color: '#FFF', fontSize: 16 }}>Enter Code Manually</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  viewfinder: { 
-    width: width * 0.7, 
-    height: width * 0.7, 
-    position: 'relative', 
-    overflow: 'hidden',
-    alignSelf: 'center',
-    marginTop: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  corner: { 
-    position: 'absolute', 
-    width: 30, 
-    height: 30 
-  },
-  laser: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#00D4AA',
-  },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 80,
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: 20
-  },
-  instructionText: {
-    color: '#FFF',
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: '500'
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 60,
-    left: 24,
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
-  }
-});

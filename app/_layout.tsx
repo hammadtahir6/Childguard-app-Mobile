@@ -12,7 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import Toast from '../components/Toast';
 
 // Prevent the splash screen from auto-hiding before assets/fonts are loaded.
-// .catch() prevents unhandled promise rejections during hot-reloads.
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* Ignore error if already hidden */
 });
@@ -31,7 +30,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       // Hide the splash screen once fonts are loaded.
-      // .catch() prevents warnings if the splash screen is already hidden during dev reloads.
       SplashScreen.hideAsync().catch(() => {
         /* Ignore error if already hidden */
       });
@@ -58,15 +56,16 @@ export default function RootLayout() {
             <Stack.Screen name="band-details" options={{ presentation: 'modal' }} />
             <Stack.Screen name="emergency" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="child-profile" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="pair-band" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="alert-detail" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="pair-band" options={{ presentation: 'modal', title: 'Pair Band' }} />
+            <Stack.Screen name="wifi-setup" options={{ presentation: 'modal', title: 'WiFi Setup' }} />
             <Stack.Screen name="qr-scan" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="alert-detail" options={{ presentation: 'modal' }} />
             <Stack.Screen name="emergency-contacts" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="add-child" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="add-child" options={{ presentation: 'modal', title: 'Add Child' }} />
             <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
             
             {/* SETTINGS ROUTES */}
-            <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit Profile' }} />
             <Stack.Screen name="language-select" options={{ presentation: 'modal' }} />
             <Stack.Screen name="notification-prefs" options={{ presentation: 'modal' }} />
             <Stack.Screen name="location-timer" options={{ presentation: 'modal' }} />

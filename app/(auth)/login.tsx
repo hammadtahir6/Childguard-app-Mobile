@@ -20,20 +20,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       showToast('Please fill in all fields', 'warning');
       return;
     }
-    login(email);
-    showToast('Login successful!', 'success');
-    router.replace('/(tabs)');
-  };
-
-  const handleGoogleLogin = () => {
-    login('user@gmail.com');
-    showToast('Logged in with Google', 'success');
-    router.replace('/(tabs)');
+    
+    try {
+      await login(email, password);
+      showToast('Login successful!', 'success');
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      showToast('Login failed. Please check your credentials.', 'error');
+    }
   };
 
   return (
@@ -96,9 +96,13 @@ export default function Login() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.BORDER }} />
             </View>
             
-            <TouchableOpacity onPress={handleGoogleLogin} style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
-              <Ionicons name="logo-google" size={20} color={colors.TEXT_PRIMARY} />
-              <ThemedText weight="medium" style={{ color: colors.TEXT_PRIMARY }}>Continue with Google</ThemedText>
+            {/* Google Button Disabled for Now */}
+            <TouchableOpacity 
+              disabled
+              style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1, opacity: 0.5 }]}
+            >
+              <Ionicons name="logo-google" size={20} color={colors.TEXT_SECONDARY} />
+              <ThemedText weight="medium" style={{ color: colors.TEXT_SECONDARY }}>Continue with Google (Coming Soon)</ThemedText>
             </TouchableOpacity>
             
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>

@@ -14,13 +14,13 @@ const COUNTRIES = [
   { code: '+1', flag: '🇺🇸', name: 'USA' },
   { code: '+44', flag: '🇬🇧', name: 'UK' },
   { code: '+92', flag: '🇵🇰', name: 'Pakistan' },
-  { code: '+91', flag: '🇮🇳', name: 'India' },
-  { code: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: '+91', flag: '🇮', name: 'India' },
+  { code: '+971', flag: '🇪', name: 'UAE' },
   { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
   { code: '+1', flag: '🇨🇦', name: 'Canada' },
   { code: '+61', flag: '🇦🇺', name: 'Australia' },
   { code: '+49', flag: '🇩🇪', name: 'Germany' },
-  { code: '+33', flag: '🇫🇷', name: 'France' },
+  { code: '+33', flag: '🇫', name: 'France' },
 ];
 
 export default function Register() {
@@ -40,24 +40,25 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [city, setCity] = useState('');
 
-  const handleRegister = () => {
-    if (!name || !email || !phone || !password || !confirmPassword || !city) {
-      showToast('Please fill in all fields', 'warning');
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      showToast('Please fill in all required fields', 'warning');
       return;
     }
     if (password !== confirmPassword) {
       showToast('Passwords do not match', 'error');
       return;
     }
-    register(name, email);
-    showToast('Account created successfully!', 'success');
-    router.replace('/(tabs)');
-  };
-
-  const handleGoogleRegister = () => {
-    register('User', 'user@gmail.com');
-    showToast('Registered with Google', 'success');
-    router.replace('/(tabs)');
+    
+    try {
+      await register(name, email, password, phone, city);
+      showToast('Account created successfully!', 'success');
+      // Redirect to Add Child screen
+      router.replace('/add-child');
+    } catch (error: any) {
+      console.error('Register error:', error);
+      showToast('Registration failed. Email might already be in use.', 'error');
+    }
   };
 
   return (
@@ -138,9 +139,12 @@ export default function Register() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.BORDER }} />
             </View>
             
-            <TouchableOpacity onPress={handleGoogleRegister} style={[styles.input, { backgroundColor: colors.BG_SECONDARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1 }]}>
-              <Ionicons name="logo-google" size={20} color={colors.TEXT_PRIMARY} />
-              <ThemedText weight="medium" style={{ color: colors.TEXT_PRIMARY }}>Continue with Google</ThemedText>
+            <TouchableOpacity 
+              disabled
+              style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, borderWidth: 1, opacity: 0.5 }]}
+            >
+              <Ionicons name="logo-google" size={20} color={colors.TEXT_SECONDARY} />
+              <ThemedText weight="medium" style={{ color: colors.TEXT_SECONDARY }}>Continue with Google (Coming Soon)</ThemedText>
             </TouchableOpacity>
             
             <TouchableOpacity onPress={() => router.push('/(auth)/login')}>

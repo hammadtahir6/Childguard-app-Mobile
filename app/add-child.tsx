@@ -1,160 +1,268 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { ThemedText } from '../components/ui/ThemedText';
-import { ThemedView } from '../components/ui/ThemedView';
-import { GlassCard } from '../components/ui/GlassCard';
 import { useThemeStore } from '../store/themeStore';
-import { useChildrenStore } from '../store/childrenStore';
+import { useToastStore } from '../store/toastStore';
+import { ThemedText } from '../components/ui/ThemedText';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GradientButton } from '../components/ui/GradientButton';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import { BASE_URL } from '../api/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AddChildScreen() {
   const router = useRouter();
   const { colors } = useThemeStore();
-  const { addChild } = useChildrenStore();
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '', age: '', gender: '', grade: '', schoolName: '', startTime: '08:00', endTime: '14:00', medical: ''
-  });
+  const { showToast } = useToastStore();
+  
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('');
+  const [grade, setGrade] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [medicalNotes, setMedicalNotes] = useState('');
+  const [childPhoto, setChildPhoto] = useState<string | null>(null);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8,
-    });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
-  };
-
-  const handleContinue = () => {
-    if (!formData.name) {
-      Alert.alert('Missing Info', 'Please enter the child\'s name.');
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission Required', 'Permission to access camera roll is required!');
       return;
     }
-    addChild({
-      id: Date.now().toString(), name: formData.name, age: parseInt(formData.age) || 0, gender: formData.gender,
-      photo: photo || undefined, status: 'SAFE', vitals: { heartRate: 85, spo2: 98, temperature: 36.5 },
-      location: { lat: 34.0151, lng: 71.5249, address: 'Peshawar, Pakistan', inSafeZone: true },
-      band: { battery: 100, connected: false }, safeZones: [],
-      medicalInfo: { allergies: formData.medical },
-      schoolSchedule: { name: formData.schoolName, startTime: formData.startTime, endTime: formData.endTime }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
     });
-    router.push('/pair-band');
+
+    if (!result.canceled) {
+      setChildPhoto(result.assets[0].uri);
+    }
   };
 
-  const handleSkip = () => {
-    handleContinue();
+  const handleAddChild = async () => {
+    if (!name || !age || !gender) {
+      showToast('Please fill in all required fields', 'warning');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showToast('Authentication required', 'error');
+        router.replace('/(auth)/login');
+        return;
+      }
+
+      const response = await axios.post(
+        `${BASE_URL}/children/`,
+        {
+          name,
+          age: parseInt(age),
+          gender,
+          grade: grade || null,
+          school_name: schoolName || null,
+          medical_notes: medicalNotes || null,
+          profile_photo_url: childPhoto,
+        },
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      showToast('Child added successfully!', 'success');
+      // Navigate to pair band screen with child ID
+      router.replace(`/pair-band?childId=${response.data.id}`);
+    } catch (error: any) {
+      console.error('Add child error:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to add child. Please try again.';
+      showToast(errorMsg, 'error');
+    }
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, flexGrow: 1 }}>
         
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.TEXT_PRIMARY} />
-          </TouchableOpacity>
-          <View>
-            <ThemedText weight="bold" style={{ fontSize: 22, color: colors.TEXT_PRIMARY }}>Add Child Profile</ThemedText>
-            <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, marginTop: 4 }}>Set up your child's profile to get started</ThemedText>
-          </View>
+        <View style={{ marginBottom: 32, marginTop: 20 }}>
+          <ThemedText weight="bold" style={{ fontSize: 28, color: colors.TEXT_PRIMARY, marginBottom: 8 }}>
+            Add Child
+          </ThemedText>
+          <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>
+            Let's start by adding your child's information
+          </ThemedText>
         </View>
 
-        {/* Photo Section */}
+        {/* Profile Photo */}
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          <TouchableOpacity onPress={pickImage} style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: colors.BG_TERTIARY, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderStyle: 'dashed', borderColor: colors.BORDER, overflow: 'hidden' }}>
-            {photo ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} /> : (
-              <View style={{ alignItems: 'center' }}>
-                <Ionicons name="camera-outline" size={28} color={colors.TEXT_SECONDARY} />
-                <ThemedText style={{ fontSize: 10, color: colors.TEXT_SECONDARY, marginTop: 4 }}>Add Photo</ThemedText>
-              </View>
-            )}
+          <TouchableOpacity onPress={pickImage} style={{ position: 'relative' }}>
+            <View style={{ 
+              width: 100, height: 100, borderRadius: 50, 
+              backgroundColor: colors.BG_TERTIARY,
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 2, borderColor: colors.ACCENT_TEAL,
+              borderStyle: 'dashed'
+            }}>
+              {childPhoto ? (
+                <Image source={{ uri: childPhoto }} style={{ width: 100, height: 100, borderRadius: 50 }} />
+              ) : (
+                <Ionicons name="camera-outline" size={40} color={colors.TEXT_SECONDARY} />
+              )}
+            </View>
+            <View style={{ 
+              position: 'absolute', bottom: 0, right: 0,
+              backgroundColor: colors.ACCENT_TEAL,
+              width: 32, height: 32, borderRadius: 16,
+              justifyContent: 'center', alignItems: 'center'
+            }}>
+              <Ionicons name="pencil" size={16} color="#FFF" />
+            </View>
           </TouchableOpacity>
+          <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginTop: 8 }}>
+            Tap to add photo (optional)
+          </ThemedText>
         </View>
 
-        {/* Form Card */}
-        <GlassCard style={{ padding: 20, gap: 20 }}>
-          
+        <GlassCard style={{ padding: 24, gap: 16, marginBottom: 24 }}>
           <View>
-            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Child's Full Name *</ThemedText>
-            <TextInput placeholder="e.g. Sara Ahmed" placeholderTextColor={colors.TEXT_SECONDARY} value={formData.name} onChangeText={(t) => setFormData({...formData, name: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Age *</ThemedText>
-              <TextInput placeholder="8" placeholderTextColor={colors.TEXT_SECONDARY} keyboardType="number-pad" value={formData.age} onChangeText={(t) => setFormData({...formData, age: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Gender *</ThemedText>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {['Boy', 'Girl'].map(g => (
-                  <TouchableOpacity key={g} onPress={() => setFormData({...formData, gender: g})} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: formData.gender === g ? colors.ACCENT_TEAL : colors.BORDER, backgroundColor: formData.gender === g ? colors.ACCENT_TEAL + '20' : colors.BG_TERTIARY, alignItems: 'center' }}>
-                    <ThemedText style={{ color: formData.gender === g ? colors.ACCENT_TEAL : colors.TEXT_SECONDARY, fontSize: 13, fontWeight: '600' }}>{g}</ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              Full Name *
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER, paddingHorizontal: 12 }}>
+              <Ionicons name="person-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Enter child's full name"
+                placeholderTextColor={colors.TEXT_SECONDARY}
+                value={name}
+                onChangeText={setName}
+                style={{ flex: 1, height: 50, color: colors.TEXT_PRIMARY, fontSize: 15 }}
+              />
             </View>
           </View>
 
           <View>
-            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Grade / Class</ThemedText>
-            <TextInput placeholder="e.g. Class 3" placeholderTextColor={colors.TEXT_SECONDARY} value={formData.grade} onChangeText={(t) => setFormData({...formData, grade: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
-          </View>
-
-          <View style={{ height: 1, backgroundColor: colors.BORDER, marginVertical: 4 }} />
-          
-          <View>
-            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>School Name</ThemedText>
-            <TextInput placeholder="e.g. Beacon House" placeholderTextColor={colors.TEXT_SECONDARY} value={formData.schoolName} onChangeText={(t) => setFormData({...formData, schoolName: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY }]} />
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Start Time</ThemedText>
-              <TextInput placeholder="08:00" value={formData.startTime} onChangeText={(t) => setFormData({...formData, startTime: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY, textAlign: 'center' }]} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>End Time</ThemedText>
-              <TextInput placeholder="14:00" value={formData.endTime} onChangeText={(t) => setFormData({...formData, endTime: t})} style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY, textAlign: 'center' }]} />
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              Age *
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER, paddingHorizontal: 12 }}>
+              <Ionicons name="calendar-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Enter age"
+                placeholderTextColor={colors.TEXT_SECONDARY}
+                value={age}
+                onChangeText={setAge}
+                keyboardType="number-pad"
+                style={{ flex: 1, height: 50, color: colors.TEXT_PRIMARY, fontSize: 15 }}
+              />
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: colors.BORDER, marginVertical: 4 }} />
-          
           <View>
-            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6, fontWeight: '600' }}>Medical Notes (Optional)</ThemedText>
-            <TextInput 
-              placeholder="Allergies, conditions, or anything important..." 
-              placeholderTextColor={colors.TEXT_SECONDARY} 
-              multiline numberOfLines={3} 
-              value={formData.medical} 
-              onChangeText={(t) => setFormData({...formData, medical: t})} 
-              textAlignVertical="top"
-              style={[styles.input, { backgroundColor: colors.BG_TERTIARY, borderColor: colors.BORDER, color: colors.TEXT_PRIMARY, height: 80, paddingTop: 12 }]} 
-            />
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              Gender *
+            </ThemedText>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => setGender('Male')}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: gender === 'Male' ? colors.ACCENT_TEAL : colors.BORDER,
+                  backgroundColor: gender === 'Male' ? colors.ACCENT_TEAL + '20' : colors.BG_TERTIARY,
+                  alignItems: 'center',
+                }}
+              >
+                <ThemedText style={{ color: gender === 'Male' ? colors.ACCENT_TEAL : colors.TEXT_SECONDARY, fontWeight: '600' }}>
+                  Male
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setGender('Female')}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: gender === 'Female' ? colors.ACCENT_TEAL : colors.BORDER,
+                  backgroundColor: gender === 'Female' ? colors.ACCENT_TEAL + '20' : colors.BG_TERTIARY,
+                  alignItems: 'center',
+                }}
+              >
+                <ThemedText style={{ color: gender === 'Female' ? colors.ACCENT_TEAL : colors.TEXT_SECONDARY, fontWeight: '600' }}>
+                  Female
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View>
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              Grade/Class
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER, paddingHorizontal: 12 }}>
+              <Ionicons name="school-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="e.g., 3rd Grade"
+                placeholderTextColor={colors.TEXT_SECONDARY}
+                value={grade}
+                onChangeText={setGrade}
+                style={{ flex: 1, height: 50, color: colors.TEXT_PRIMARY, fontSize: 15 }}
+              />
+            </View>
+          </View>
+
+          <View>
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              School Name
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER, paddingHorizontal: 12 }}>
+              <Ionicons name="business-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Enter school name"
+                placeholderTextColor={colors.TEXT_SECONDARY}
+                value={schoolName}
+                onChangeText={setSchoolName}
+                style={{ flex: 1, height: 50, color: colors.TEXT_PRIMARY, fontSize: 15 }}
+              />
+            </View>
+          </View>
+
+          <View>
+            <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 6 }}>
+              Medical Notes
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.BG_TERTIARY, borderRadius: 12, borderWidth: 1, borderColor: colors.BORDER, paddingHorizontal: 12 }}>
+              <Ionicons name="medical-outline" size={20} color={colors.TEXT_SECONDARY} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Any allergies or medical conditions"
+                placeholderTextColor={colors.TEXT_SECONDARY}
+                value={medicalNotes}
+                onChangeText={setMedicalNotes}
+                multiline
+                numberOfLines={3}
+                style={{ flex: 1, height: 80, color: colors.TEXT_PRIMARY, fontSize: 15, textAlignVertical: 'top' }}
+              />
+            </View>
           </View>
         </GlassCard>
 
-        {/* Bottom Buttons */}
-        <View style={{ marginTop: 24, gap: 12 }}>
-          <TouchableOpacity 
-            onPress={handleContinue}
-            style={{ paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: colors.ACCENT_TEAL }}
-          >
-            <ThemedText weight="bold" style={{ color: '#FFF', fontSize: 16 }}>Continue to Band Pairing →</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSkip} style={{ paddingVertical: 16, alignItems: 'center' }}>
-            <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, fontWeight: '500' }}>Skip — Add Band Later</ThemedText>
-          </TouchableOpacity>
-        </View>
+        <GradientButton title="Continue to Pair Band" onPress={handleAddChild} />
 
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16, alignItems: 'center', marginBottom: 40 }}>
+          <ThemedText style={{ color: colors.TEXT_SECONDARY, fontSize: 14 }}>Cancel</ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  input: { height: 50, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, fontSize: 15 },
-});
