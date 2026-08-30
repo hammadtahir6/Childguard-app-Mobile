@@ -18,7 +18,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { colors } = useThemeStore();
   const { showToast } = useToastStore();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,7 +27,6 @@ export default function EditProfileScreen() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load user data on mount
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -37,24 +36,26 @@ export default function EditProfileScreen() {
           return;
         }
 
-        // Fetch latest user data from backend
-        const response = await axios.get(`${BASE_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        try {
+          const response = await axios.get(`${BASE_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-        const userData = response.data;
-        setFullName(userData.full_name || '');
-        setEmail(userData.email || '');
-        setPhone(userData.phone || '');
-        setCity(userData.city || '');
-        setProfilePhoto(userData.profile_photo_url || null);
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        // Fallback to store data
-        if (user) {
+          const userData = response.data;
+          setFullName(userData.full_name || '');
+          setEmail(userData.email || '');
+          setPhone(userData.phone || '');
+          setCity(userData.city || '');
+          setProfilePhoto(userData.profile_photo_url || null);
+        } catch (error) {
           setFullName(user.full_name || '');
           setEmail(user.email || '');
+          setPhone(user.phone || '');
+          setCity(user.city || '');
+          setProfilePhoto(user.profile_photo_url || null);
         }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     };
 
@@ -96,59 +97,49 @@ export default function EditProfileScreen() {
         return;
       }
 
-      // Update user profile via backend
-      await axios.put(
-        `${BASE_URL}/users/me`,
-        {
+      try {
+        await axios.put(
+          `${BASE_URL}/users/me`,
+          {
+            full_name: fullName.trim(),
+            email: email.trim(),
+            phone: phone.trim() || null,
+            city: city.trim() || null,
+            profile_photo_url: profilePhoto,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (backendError: any) {
+        console.log('Backend update failed, using local storage');
+        await AsyncStorage.setItem('user', JSON.stringify({
+          ...user,
           full_name: fullName.trim(),
           email: email.trim(),
-          phone: phone.trim() || null,
-          city: city.trim() || null,
+          phone: phone.trim(),
+          city: city.trim(),
           profile_photo_url: profilePhoto,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        }));
+      }
+
+      useAuthStore.setState({
+        user: {
+          id: user?.id || '',
+          full_name: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          city: city.trim(),
+          profile_photo_url: profilePhoto ?? undefined,
+        }
+      });
 
       showToast('Profile updated successfully!', 'success');
-      
-      // Update auth store with new data
-      const response = await axios.get(`${BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      // Update local state
-      setFullName(response.data.full_name);
-      setEmail(response.data.email);
-      setPhone(response.data.phone);
-      setCity(response.data.city);
-      setProfilePhoto(response.data.profile_photo_url);
-      
       router.back();
     } catch (error: any) {
       console.error('Update profile error:', error);
-      const errorMsg = error.response?.data?.detail || 'Failed to update profile. Please try again.';
-      showToast(errorMsg, 'error');
+      showToast('Failed to update profile. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out?',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/onboarding');
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -164,7 +155,6 @@ export default function EditProfileScreen() {
           </ThemedText>
         </View>
 
-        {/* Profile Photo */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <TouchableOpacity onPress={pickImage} style={{ position: 'relative' }}>
             <View style={{ 
@@ -271,15 +261,6 @@ export default function EditProfileScreen() {
           onPress={handleSaveProfile}
           disabled={isSaving}
         />
-
-        <TouchableOpacity 
-          onPress={handleLogout}
-          style={{ marginTop: 24, paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: colors.DANGER + '10', borderWidth: 1, borderColor: colors.DANGER }}
-        >
-          <ThemedText weight="bold" style={{ fontSize: 16, color: colors.DANGER }}>
-            Sign Out
-          </ThemedText>
-        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

@@ -66,10 +66,14 @@ export default function RootLayout() {
             
             {/* SETTINGS ROUTES */}
             <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit Profile' }} />
-            <Stack.Screen name="language-select" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="notification-prefs" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="location-timer" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="safe-zone-map" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="change-password" options={{ presentation: 'modal', title: 'Change Password' }} />
+            <Stack.Screen name="privacy-security" options={{ presentation: 'modal', title: 'Privacy' }} />
+            <Stack.Screen name="language-select" options={{ presentation: 'modal', title: 'Language' }} />
+            <Stack.Screen name="notification-prefs" options={{ presentation: 'modal', title: 'Notifications' }} />
+            <Stack.Screen name="location-timer" options={{ presentation: 'modal', title: 'Location Timer' }} />
+            <Stack.Screen name="safe-zone-map" options={{ presentation: 'modal', title: 'Safe Zones' }} />
+            <Stack.Screen name="help-faq" options={{ presentation: 'modal', title: 'Help' }} />
+            <Stack.Screen name="terms-privacy" options={{ presentation: 'modal', title: 'Terms' }} />
           </Stack>
         </View>
         <Toast />

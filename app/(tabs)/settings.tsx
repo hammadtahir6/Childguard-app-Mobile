@@ -13,11 +13,6 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../../api/config';
 
-const LANGUAGES: Record<string, string> = {
-  en: 'English', ur: 'Urdu', ar: 'Arabic', es: 'Spanish',
-  fr: 'French', zh: 'Chinese', hi: 'Hindi', tr: 'Turkish'
-};
-
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, mode, toggleTheme } = useThemeStore();
@@ -64,7 +59,7 @@ export default function SettingsScreen() {
     );
   };
 
-  // Safe calculation for total zones (prevents crash if data is undefined)
+  // Safe calculation for total zones
   const totalZones = (children || []).reduce((sum, child) => {
     return sum + (child.safeZones?.length || 0);
   }, 0);
@@ -150,7 +145,7 @@ export default function SettingsScreen() {
             icon="lock-closed-outline"
             title="Change Password"
             subtitle="Update your security credentials"
-            onPress={() => showToast('Password change coming soon', 'info')}
+            onPress={() => router.push('/change-password')}
             iconColor="#6366F1"
           />
           <Divider />
@@ -158,7 +153,7 @@ export default function SettingsScreen() {
             icon="shield-outline"
             title="Privacy & Security"
             subtitle="Data, permissions, 2FA"
-            onPress={() => showToast('Privacy settings coming soon', 'info')}
+            onPress={() => router.push('/privacy-security')}
             iconColor="#8B5CF6"
           />
         </GlassCard>
@@ -171,8 +166,8 @@ export default function SettingsScreen() {
           <SettingRow
             icon="language-outline"
             title="Language"
-            subtitle={LANGUAGES['en'] || 'English'}
-            onPress={() => showToast('Language settings coming soon', 'info')}
+            subtitle="English"
+            onPress={() => router.push('/language-select')}
             iconColor="#3B82F6"
           />
           <Divider />
@@ -194,7 +189,7 @@ export default function SettingsScreen() {
             icon="notifications-outline"
             title="Notification Preferences"
             subtitle="Control alerts & priorities"
-            onPress={() => showToast('Notification settings coming soon', 'info')}
+            onPress={() => router.push('/notification-prefs')}
             iconColor="#EF4444"
           />
         </GlassCard>
@@ -208,7 +203,7 @@ export default function SettingsScreen() {
             icon="navigate-outline"
             title="Location Update Interval"
             subtitle="Every 5 minutes"
-            onPress={() => showToast('Location timer coming soon', 'info')}
+            onPress={() => router.push('/location-timer')}
             iconColor="#10B981"
           />
           <Divider />
@@ -238,7 +233,7 @@ export default function SettingsScreen() {
             icon="help-circle-outline"
             title="Help & FAQ"
             subtitle="Get support and guides"
-            onPress={() => showToast('Help center coming soon', 'info')}
+            onPress={() => router.push('/help-faq')}
             iconColor="#3B82F6"
           />
           <Divider />
@@ -246,7 +241,7 @@ export default function SettingsScreen() {
             icon="document-text-outline"
             title="Terms & Privacy"
             subtitle="Legal information"
-            onPress={() => showToast('Legal docs coming soon', 'info')}
+            onPress={() => router.push('/terms-privacy')}
             iconColor="#6B7280"
           />
           <Divider />
@@ -254,7 +249,7 @@ export default function SettingsScreen() {
             icon="information-circle-outline"
             title="About ChildGuard"
             subtitle="Version 1.0.0"
-            onPress={() => showToast('ChildGuard v1.0.0', 'info')}
+            onPress={() => showToast('ChildGuard v1.0.0\nAI-Powered Child Safety', 'info')}
             iconColor="#8B5CF6"
           />
         </GlassCard>

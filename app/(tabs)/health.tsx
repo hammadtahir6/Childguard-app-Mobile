@@ -20,7 +20,7 @@ const generateMockData = (period: string, baseValue: number, variance: number) =
   const configs: Record<string, { count: number; labelStep: number; labelFormat: (i: number) => string }> = {
     '1H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 5}m` }, 
     '6H': { count: 12, labelStep: 2, labelFormat: (i) => `${i * 30}m` }, 
-    '24H': { count: 24, labelStep: 3, labelFormat: (i) => `${i}h` }, // Shows every 3 hours now
+    '24H': { count: 24, labelStep: 3, labelFormat: (i) => `${i}h` },
     '7D': { count: 7, labelStep: 1, labelFormat: (i) => `D${i + 1}` }, 
     '30D': { count: 30, labelStep: 5, labelFormat: (i) => `D${i + 1}` }, 
   };
@@ -75,7 +75,6 @@ export default function HealthScreen() {
   const spo2Stats = getStats(spo2Data.dataPoints);
   const tempStats = getStats(tempData.dataPoints);
 
-  // Fixed wide width for scrolling
   const chartWidth = 600; 
 
   return (
@@ -88,7 +87,7 @@ export default function HealthScreen() {
             Health Report
           </ThemedText>
           <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>
-            {activeChild.name}'s vitals overview
+            {activeChild?.name || 'Child'}'s vitals overview
           </ThemedText>
         </View>
 
@@ -134,17 +133,16 @@ export default function HealthScreen() {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <ThemedText font="mono" weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>
-                  {activeChild.vitals.heartRate}
+                  {activeChild?.vitals?.heartRate ?? '--'}
                 </ThemedText>
                 <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Current BPM</ThemedText>
               </View>
             </View>
 
-            {/* Scrollable Chart Container */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
               <LineChart
                 data={{ labels: heartRateData.labels, datasets: [{ data: heartRateData.dataPoints }] }}
-                width={chartWidth} // Wider than screen to enable scroll
+                width={chartWidth}
                 height={180}
                 yAxisLabel=""
                 yAxisSuffix=""
@@ -192,7 +190,7 @@ export default function HealthScreen() {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <ThemedText font="mono" weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>
-                  {activeChild.vitals.spo2}%
+                  {activeChild?.vitals?.spo2 ?? '--'}%
                 </ThemedText>
                 <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Current SpO2</ThemedText>
               </View>
@@ -249,7 +247,7 @@ export default function HealthScreen() {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <ThemedText font="mono" weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>
-                  {activeChild.vitals.temperature}°C
+                  {activeChild?.vitals?.temperature ?? '--'}°C
                 </ThemedText>
                 <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Current Temp</ThemedText>
               </View>
@@ -303,7 +301,7 @@ export default function HealthScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.SUCCESS, marginTop: 6 }} />
                 <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY, lineHeight: 18, flex: 1 }}>
-                  Heart rate is within normal range for {activeChild.name}'s age group.
+                  Heart rate is within normal range for {activeChild?.name || 'child'}'s age group.
                 </ThemedText>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>

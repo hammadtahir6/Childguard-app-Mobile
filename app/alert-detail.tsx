@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Region, LatLng } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
 import { useChildrenStore } from '../store/childrenStore';
@@ -41,6 +41,11 @@ export default function AlertDetail() {
     router.back();
   };
 
+  // ✅ SAFE: Get vitals with fallbacks
+  const heartRate = activeChild?.vitals?.heartRate ?? '--';
+  const spo2 = activeChild?.vitals?.spo2 ?? '--';
+  const temperature = activeChild?.vitals?.temperature ?? '--';
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
@@ -54,8 +59,21 @@ export default function AlertDetail() {
 
         {/* Map Section */}
         <TouchableOpacity activeOpacity={0.9} onPress={openMaps} style={{ marginBottom: 20, borderRadius: 16, overflow: 'hidden', height: 200, borderWidth: 1, borderColor: colors.BORDER }}>
-          <MapView style={{ width: '100%', height: '100%' }} initialRegion={{ latitude: alert.location.lat, longitude: alert.location.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={true} zoomEnabled={true}>
-            <Marker coordinate={{ latitude: alert.location.lat, longitude: alert.location.lng }} pinColor={colors.DANGER} />
+          <MapView 
+            style={{ width: '100%', height: '100%' }} 
+            initialRegion={{ 
+              latitude: alert.location.lat, 
+              longitude: alert.location.lng, 
+              latitudeDelta: 0.01, 
+              longitudeDelta: 0.01, 
+            } as Region} 
+            scrollEnabled={true} 
+            zoomEnabled={true}
+          >
+            <Marker 
+              coordinate={{ latitude: alert.location.lat, longitude: alert.location.lng } as LatLng} 
+              pinColor={colors.DANGER} 
+            />
           </MapView>
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <ThemedText style={{ fontSize: 13, color: '#FFF', fontWeight: '600', flex: 1 }}>{alert.location.address}</ThemedText>
@@ -68,24 +86,23 @@ export default function AlertDetail() {
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
           <GlassCard style={{ flex: 1, padding: 16, alignItems: 'center' }}>
             <Ionicons name="heart" size={24} color={colors.DANGER} style={{ marginBottom: 8 }} />
-            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{activeChild?.vitals.heartRate || '--'}</ThemedText>
+            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{heartRate}</ThemedText>
             <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>BPM</ThemedText>
           </GlassCard>
           <GlassCard style={{ flex: 1, padding: 16, alignItems: 'center' }}>
             <Ionicons name="pulse" size={24} color="#3B82F6" style={{ marginBottom: 8 }} />
-            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{activeChild?.vitals.spo2 || '--'}%</ThemedText>
+            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{spo2}%</ThemedText>
             <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>SpO2</ThemedText>
           </GlassCard>
           <GlassCard style={{ flex: 1, padding: 16, alignItems: 'center' }}>
             <Ionicons name="thermometer" size={24} color={colors.WARNING} style={{ marginBottom: 8 }} />
-            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{activeChild?.vitals.temperature || '--'}°</ThemedText>
+            <ThemedText font="mono" weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY }}>{temperature}°</ThemedText>
             <ThemedText style={{ fontSize: 11, color: colors.TEXT_SECONDARY }}>Temp</ThemedText>
           </GlassCard>
         </View>
 
         {/* Action Buttons */}
         <View style={{ gap: 12 }}>
-          {/* RESOLVE BUTTON - Only shows if alert is NOT resolved */}
           {!alert.resolved && (
             <TouchableOpacity onPress={handleResolve} style={[styles.btn, { backgroundColor: colors.SUCCESS }]}>
               <Ionicons name="shield-checkmark" size={20} color="#FFF" />

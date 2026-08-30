@@ -2,9 +2,19 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../api/auth';
 
+// ✅ User interface with all fields including profile_photo_url
+interface User {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  profile_photo_url?: string;
+}
+
 interface AuthState {
   isLoggedIn: boolean;
-  user: { id: string; full_name: string; email: string } | null;
+  user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -44,13 +54,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authAPI.login({ email, password });
       
+      // ✅ Save user with profile_photo_url
+      const userData: User = {
+        id: response.user.id,
+        full_name: response.user.full_name,
+        email: response.user.email,
+        phone: response.user.phone,
+        city: response.user.city,
+        profile_photo_url: response.user.profile_photo_url,
+      };
+      
       await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
       
       set({
         isLoggedIn: true,
         token: response.access_token,
-        user: response.user,
+        user: userData,
       });
     } catch (error: any) {
       console.error('Login error:', error);
@@ -74,13 +94,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         city,
       });
       
+      // ✅ Save user with profile_photo_url
+      const userData: User = {
+        id: response.user.id,
+        full_name: response.user.full_name,
+        email: response.user.email,
+        phone: response.user.phone,
+        city: response.user.city,
+        profile_photo_url: response.user.profile_photo_url,
+      };
+      
       await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
       
       set({
         isLoggedIn: true,
         token: response.access_token,
-        user: response.user,
+        user: userData,
       });
     } catch (error: any) {
       console.error('Register error:', error);

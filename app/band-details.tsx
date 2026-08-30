@@ -1,230 +1,167 @@
-import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
 import { useChildrenStore } from '../store/childrenStore';
-import { useToastStore } from '../store/toastStore';
 import { ThemedText } from '../components/ui/ThemedText';
 import { GlassCard } from '../components/ui/GlassCard';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function BandDetailsScreen() {
   const router = useRouter();
   const { colors } = useThemeStore();
-  const { activeChildId, children, disconnectBand } = useChildrenStore();
-  const { showToast } = useToastStore();
+  const { children, activeChildId } = useChildrenStore();
   
-  const activeChild = children.find(c => c.id === activeChildId) || children[0];
-  const [signalStrength] = useState(4); // 1-5 scale
+  // ✅ SAFE: Find active child with fallback
+  const activeChild = children.length > 0 
+    ? (children.find(c => c.id === activeChildId) || children[0])
+    : null;
 
-  const handleUnpair = () => {
-    Alert.alert(
-      'Unpair Wristband',
-      `This will disconnect the band from ${activeChild.name}'s profile.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unpair',
-          style: 'destructive',
-          onPress: () => {
-            disconnectBand(activeChild.id);
-            showToast('Band disconnected', 'info');
-          }
-        }
-      ]
+  if (!activeChild) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY, justifyContent: 'center', alignItems: 'center' }}>
+        <Ionicons name="watch-outline" size={80} color={colors.TEXT_SECONDARY} />
+        <ThemedText style={{ fontSize: 16, color: colors.TEXT_SECONDARY, marginTop: 16 }}>
+          No band paired
+        </ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 24 }}>
+          <ThemedText style={{ color: colors.ACCENT_TEAL, fontSize: 16 }}>Go Back</ThemedText>
+        </TouchableOpacity>
+      </SafeAreaView>
     );
-  };
+  }
 
-  const handleRingBand = () => {
-    showToast('Ringing band...', 'info');
-    // In real app: send command to band via BLE/API
-  };
-
-  const handleUpdateFirmware = () => {
-    showToast('Checking for updates...', 'info');
-    // In real app: check firmware version via API
-  };
+  // ✅ SAFE: Get band data with fallbacks using optional chaining and nullish coalescing
+  const band = activeChild.band || {};
+  const battery = band.battery ?? 100;
+  const isConnected = band.is_connected ?? false;
+  const bandCode = band.band_code ?? 'Not paired';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
         
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 8 }}>
             <Ionicons name="arrow-back" size={24} color={colors.TEXT_PRIMARY} />
           </TouchableOpacity>
-          <ThemedText weight="bold" style={{ fontSize: 22, color: colors.TEXT_PRIMARY }}>Band Details</ThemedText>
+          <ThemedText weight="bold" style={{ fontSize: 24, color: colors.TEXT_PRIMARY }}>
+            Band Details
+          </ThemedText>
         </View>
 
-        {/* Band Hero */}
-        <GlassCard style={{ padding: 24, alignItems: 'center', marginBottom: 20 }}>
-          <View style={{ 
-            width: 100, height: 100, borderRadius: 50, 
-            backgroundColor: colors.ACCENT_TEAL + '20',
-            justifyContent: 'center', alignItems: 'center',
-            borderWidth: 3, borderColor: colors.ACCENT_TEAL,
-            marginBottom: 16
-          }}>
-            <Ionicons name="watch" size={50} color={colors.ACCENT_TEAL} />
-          </View>
-          <ThemedText weight="bold" style={{ fontSize: 20, color: colors.TEXT_PRIMARY, marginBottom: 4 }}>
-            ChildGuard Band Pro
-          </ThemedText>
-          <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>
-            Assigned to {activeChild.name}
-          </ThemedText>
-          <View style={{ 
-            marginTop: 12, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
-            backgroundColor: activeChild.band.connected ? colors.SUCCESS + '20' : colors.DANGER + '20',
-            flexDirection: 'row', alignItems: 'center', gap: 6
-          }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeChild.band.connected ? colors.SUCCESS : colors.DANGER }} />
-            <ThemedText weight="bold" style={{ fontSize: 12, color: activeChild.band.connected ? colors.SUCCESS : colors.DANGER }}>
-              {activeChild.band.connected ? 'Connected' : 'Disconnected'}
-            </ThemedText>
-          </View>
-        </GlassCard>
-
-        {/* Band Info */}
+        {/* Band Info Card */}
         <GlassCard style={{ padding: 20, marginBottom: 20 }}>
-          <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 16 }}>Band Information</ThemedText>
-          
-          <View style={{ gap: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY }}>Band Code</ThemedText>
-              <ThemedText font="mono" style={{ fontSize: 14, color: colors.ACCENT_TEAL, fontWeight: '600' }}>CG-2847-XKQP</ThemedText>
-            </View>
-            
-            <View style={{ height: 1, backgroundColor: colors.BORDER }} />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY }}>Firmware</ThemedText>
-              <ThemedText style={{ fontSize: 14, color: colors.TEXT_PRIMARY, fontWeight: '600' }}>v1.2.3</ThemedText>
-            </View>
-            
-            <View style={{ height: 1, backgroundColor: colors.BORDER }} />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY }}>Model</ThemedText>
-              <ThemedText style={{ fontSize: 14, color: colors.TEXT_PRIMARY, fontWeight: '600' }}>CG-Pro 2024</ThemedText>
-            </View>
-            
-            <View style={{ height: 1, backgroundColor: colors.BORDER }} />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY }}>Last Sync</ThemedText>
-              <ThemedText style={{ fontSize: 14, color: colors.TEXT_PRIMARY, fontWeight: '600' }}>5 min ago</ThemedText>
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* Battery Section */}
-        <GlassCard style={{ padding: 20, marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY }}>Battery Level</ThemedText>
-            <ThemedText weight="bold" style={{ fontSize: 18, color: activeChild.band.battery > 20 ? colors.ACCENT_TEAL : colors.DANGER }}>
-              {activeChild.band.battery}%
-            </ThemedText>
-          </View>
-          
-          <View style={{ height: 12, backgroundColor: colors.BG_TERTIARY, borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ 
-              width: `${activeChild.band.battery}%`, 
-              height: '100%', 
-              backgroundColor: activeChild.band.battery > 20 ? colors.ACCENT_TEAL : colors.DANGER,
-              borderRadius: 6
-            }} />
+              width: 60, height: 60, borderRadius: 30, 
+              backgroundColor: colors.ACCENT_TEAL,
+              justifyContent: 'center', alignItems: 'center',
+              marginRight: 16
+            }}>
+              <Ionicons name="watch" size={32} color="#FFF" />
+            </View>
+            <View>
+              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>
+                ChildGuard Band
+              </ThemedText>
+              <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>
+                Code: {bandCode}
+              </ThemedText>
+            </View>
+          </View>
+
+          {/* Connection Status */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+            <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>Connection</ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ 
+                width: 8, height: 8, borderRadius: 4, 
+                backgroundColor: isConnected ? colors.SUCCESS : colors.DANGER 
+              }} />
+              <ThemedText style={{ fontSize: 14, fontWeight: '600', color: isConnected ? colors.SUCCESS : colors.DANGER }}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </ThemedText>
+            </View>
           </View>
           
-          <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>
-            {activeChild.band.battery > 50 ? 'Battery is healthy' : 
-             activeChild.band.battery > 20 ? 'Consider charging soon' : 
-             'Low battery - Charge immediately'}
-          </ThemedText>
-        </GlassCard>
-
-        {/* Signal Strength */}
-        <GlassCard style={{ padding: 20, marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY }}>Signal Strength</ThemedText>
-            <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>{signalStrength}/5</ThemedText>
-          </View>
-          
-          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-end', height: 40 }}>
-            {[1, 2, 3, 4, 5].map((level) => (
-              <View 
-                key={level}
-                style={{ 
-                  width: 12, 
-                  height: level * 8, 
-                  backgroundColor: level <= signalStrength ? colors.ACCENT_TEAL : colors.BG_TERTIARY,
-                  borderRadius: 2
-                }} 
-              />
-            ))}
+          {/* Battery */}
+          <View style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY }}>Battery</ThemedText>
+              <ThemedText style={{ fontSize: 14, fontWeight: '600', color: colors.ACCENT_TEAL }}>
+                {battery}%
+              </ThemedText>
+            </View>
+            <View style={{ height: 6, backgroundColor: colors.BG_TERTIARY, borderRadius: 3, overflow: 'hidden' }}>
+              <View style={{ width: `${battery}%`, height: '100%', backgroundColor: colors.ACCENT_TEAL }} />
+            </View>
           </View>
         </GlassCard>
 
-        {/* Actions */}
-        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>Band Actions</ThemedText>
+        {/* Quick Actions */}
+        <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>
+          Band Controls
+        </ThemedText>
         <View style={{ gap: 12 }}>
           <TouchableOpacity 
-            onPress={handleRingBand}
             style={{ 
               flexDirection: 'row', alignItems: 'center', gap: 12,
-              padding: 16, borderRadius: 14,
-              backgroundColor: colors.BG_SECONDARY,
-              borderWidth: 1, borderColor: colors.BORDER
+              backgroundColor: colors.BG_SECONDARY, borderRadius: 14, padding: 16 
             }}
+            onPress={() => {}}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.ACCENT_TEAL + '20', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="musical-notes" size={20} color={colors.ACCENT_TEAL} />
-            </View>
+            <Ionicons name="musical-notes" size={24} color={colors.ACCENT_TEAL} />
             <View style={{ flex: 1 }}>
-              <ThemedText weight="semibold" style={{ fontSize: 15, color: colors.TEXT_PRIMARY }}>Ring Band</ThemedText>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Help locate the wristband</ThemedText>
+              <ThemedText weight="bold" style={{ fontSize: 14, color: colors.TEXT_PRIMARY }}>
+                Ring Band
+              </ThemedText>
+              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>
+                Make the band beep to help locate it
+              </ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.TEXT_SECONDARY} />
           </TouchableOpacity>
 
           <TouchableOpacity 
-            onPress={handleUpdateFirmware}
             style={{ 
               flexDirection: 'row', alignItems: 'center', gap: 12,
-              padding: 16, borderRadius: 14,
-              backgroundColor: colors.BG_SECONDARY,
-              borderWidth: 1, borderColor: colors.BORDER
+              backgroundColor: colors.BG_SECONDARY, borderRadius: 14, padding: 16 
             }}
+            onPress={() => {}}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#6366F1' + '20', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="download" size={20} color="#6366F1" />
-            </View>
+            <Ionicons name="refresh" size={24} color={colors.WARNING} />
             <View style={{ flex: 1 }}>
-              <ThemedText weight="semibold" style={{ fontSize: 15, color: colors.TEXT_PRIMARY }}>Update Firmware</ThemedText>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Current: v1.2.3</ThemedText>
+              <ThemedText weight="bold" style={{ fontSize: 14, color: colors.TEXT_PRIMARY }}>
+                Refresh Location
+              </ThemedText>
+              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>
+                Get the latest GPS coordinates
+              </ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.TEXT_SECONDARY} />
           </TouchableOpacity>
 
           <TouchableOpacity 
-            onPress={handleUnpair}
             style={{ 
               flexDirection: 'row', alignItems: 'center', gap: 12,
-              padding: 16, borderRadius: 14,
-              backgroundColor: colors.DANGER + '10',
+              backgroundColor: colors.DANGER + '20', borderRadius: 14, padding: 16,
               borderWidth: 1, borderColor: colors.DANGER
             }}
+            onPress={() => {}}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.DANGER + '20', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="unlink" size={20} color={colors.DANGER} />
-            </View>
+            <Ionicons name="unlink" size={24} color={colors.DANGER} />
             <View style={{ flex: 1 }}>
-              <ThemedText weight="semibold" style={{ fontSize: 15, color: colors.DANGER }}>Unpair Band</ThemedText>
-              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>Disconnect from profile</ThemedText>
+              <ThemedText weight="bold" style={{ fontSize: 14, color: colors.DANGER }}>
+                Unpair Band
+              </ThemedText>
+              <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>
+                Remove this band from your account
+              </ThemedText>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.DANGER} />
+            <Ionicons name="chevron-forward" size={20} color={colors.TEXT_SECONDARY} />
           </TouchableOpacity>
         </View>
 

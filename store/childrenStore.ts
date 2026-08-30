@@ -7,11 +7,10 @@ export interface Vitals {
   temperature?: number;
 }
 
-// ✅ FIXED: Added address field to Location interface
 export interface Location {
   lat?: number;
   lng?: number;
-  address?: string;  // ✅ ADD THIS
+  address?: string;
   inSafeZone?: boolean;
 }
 
@@ -19,9 +18,9 @@ export interface Band {
   id?: string;
   battery?: number;
   is_connected?: boolean;
+  band_code?: string;
 }
 
-// ✅ All nested fields are optional for backend compatibility
 export interface Child {
   id: string;
   name: string;
@@ -32,12 +31,44 @@ export interface Child {
   status: 'SAFE' | 'WARNING' | 'EMERGENCY';
   profile_photo_url?: string;
   
-  // Optional nested objects
+  // Nested objects (optional for backend compatibility)
   vitals?: Vitals;
   location?: Location;
   band?: Band;
   safeZones?: any[];
 }
+
+// ✅ Helper: Normalize flat backend response into nested Child structure
+const normalizeChild = (data: any): Child => ({
+  id: data.id,
+  name: data.name,
+  age: data.age,
+  gender: data.gender,
+  grade: data.grade,
+  school_name: data.school_name,
+  status: data.status,
+  profile_photo_url: data.profile_photo_url,
+  
+  // ✅ Create nested objects from flat fields or use defaults
+  vitals: data.vitals || {
+    heartRate: data.heart_rate,
+    spo2: data.spo2,
+    temperature: data.temperature,
+  },
+  location: data.location || {
+    lat: data.latitude,
+    lng: data.longitude,
+    address: data.address,
+    inSafeZone: data.in_safe_zone,
+  },
+  band: data.band || {
+    id: data.band_id,
+    battery: data.battery_level,
+    is_connected: data.is_connected,
+    band_code: data.band_code,
+  },
+  safeZones: data.safe_zones || [],
+});
 
 interface ChildrenState {
   children: Child[];
@@ -49,19 +80,19 @@ interface ChildrenState {
   deleteChild: (id: string) => void;
 }
 
-// Mock initial data (will be replaced by real backend data)
 const initialChildren: Child[] = [];
 
 export const useChildrenStore = create<ChildrenState>((set) => ({
   children: initialChildren,
   activeChildId: null,
   
-  // ✅ Set children from backend API
-  setChildren: (children) => set({ children }),
+  // ✅ Normalize backend data when setting children
+  setChildren: (children) => set({ 
+    children: children.map(normalizeChild) 
+  }),
   
   setActiveChild: (id) => set({ activeChildId: id }),
   
-  // ✅ Update vitals with proper type safety
   updateVitals: (childId, newVitals) => set((state) => ({
     children: state.children.map((child) =>
       child.id === childId
@@ -77,7 +108,7 @@ export const useChildrenStore = create<ChildrenState>((set) => ({
   })),
   
   addChild: (child) => set((state) => ({
-    children: [...state.children, child],
+    children: [...state.children, normalizeChild(child)],
     activeChildId: child.id,
   })),
   

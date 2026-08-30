@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity, TextInput, Alert, Dimensions } from 'react-native';
-import MapView, { Circle, Marker, MapPressEvent } from 'react-native-maps';
+import MapView, { Circle, Marker, MapPressEvent, Region, LatLng } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '../components/ui/ThemedText';
 import { ThemedView } from '../components/ui/ThemedView';
@@ -14,16 +14,24 @@ import { Ionicons } from '@expo/vector-icons';
 const ZONE_COLORS = ['#00D4AA', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// ✅ SAFE DEFAULT LOCATION
+const DEFAULT_LOCATION: Required<LatLng> = { latitude: 34.0151, longitude: 71.5249 };
+
 export default function SafeZoneMapScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const childId = params.childId as string;
   const { colors } = useThemeStore();
-  const { children, updateChildSafeZones } = useChildrenStore();
+  const { children, setChildren } = useChildrenStore(); // ✅ Use setChildren instead of updateChildSafeZones
   const { showToast } = useToastStore();
   
-  // SAFETY CHECK: Handle empty children
-  if (children.length === 0) {
+  // ✅ SAFE: Find active child with fallback
+  const child = children.length > 0 
+    ? (children.find(c => c.id === childId) || children[0])
+    : null;
+
+  // ✅ SAFE: Handle empty children
+  if (!child) {
     return (
       <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
         <Ionicons name="alert-circle" size={64} color={colors.DANGER} />
@@ -43,7 +51,13 @@ export default function SafeZoneMapScreen() {
     );
   }
   
-  const child = children.find(c => c.id === childId) || children[0];
+  // ✅ SAFE: Get location with guaranteed numbers
+  const childLat = child.location?.lat ?? DEFAULT_LOCATION.latitude;
+  const childLng = child.location?.lng ?? DEFAULT_LOCATION.longitude;
+  
+  // ✅ SAFE: Get safe zones with fallback
+  const safeZones = child.safeZones || [];
+
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [newZone, setNewZone] = useState<{
     lat: number;
@@ -66,7 +80,7 @@ export default function SafeZoneMapScreen() {
     setNewZone({
       lat: latitude,
       lng: longitude,
-      name: `Zone ${child.safeZones.length + 1}`,
+      name: `Zone ${safeZones.length + 1}`,
       radius: 100,
       color: ZONE_COLORS[0],
     });
@@ -92,7 +106,18 @@ export default function SafeZoneMapScreen() {
       color: newZone.color,
     };
 
-    updateChildSafeZones(child.id, [...child.safeZones, zoneToAdd]);
+    // ✅ SAFE: Update children store with new zone
+    const updatedChildren = children.map(c => {
+      if (c.id === child.id) {
+        return {
+          ...c,
+          safeZones: [...(c.safeZones || []), zoneToAdd],
+        };
+      }
+      return c;
+    });
+    setChildren(updatedChildren);
+    
     showToast(`"${newZone.name}" zone created!`, 'success');
     setIsDrawingMode(false);
     setNewZone(null);
@@ -114,7 +139,17 @@ export default function SafeZoneMapScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            updateChildSafeZones(child.id, child.safeZones.filter(z => z.id !== zoneId));
+            // ✅ SAFE: Update children store without the deleted zone
+            const updatedChildren = children.map(c => {
+              if (c.id === child.id) {
+                return {
+                  ...c,
+                  safeZones: (c.safeZones || []).filter(z => z.id !== zoneId),
+                };
+              }
+              return c;
+            });
+            setChildren(updatedChildren);
             showToast('Zone deleted', 'info');
           }
         }
@@ -149,17 +184,17 @@ export default function SafeZoneMapScreen() {
         <MapView
           style={{ width: MAP_WIDTH, height: MAP_HEIGHT }}
           initialRegion={{
-            latitude: child.location.lat,
-            longitude: child.location.lng,
+            latitude: childLat,
+            longitude: childLng,
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
-          }}
+          } as Region}
           onPress={handleMapPress}
           scrollEnabled={!isDrawingMode}
           zoomEnabled={!isDrawingMode}
           mapType="standard"
         >
-          <Marker coordinate={{ latitude: child.location.lat, longitude: child.location.lng }}>
+          <Marker coordinate={{ latitude: childLat, longitude: childLng } as LatLng}>
             <View style={{ 
               width: 40, height: 40, borderRadius: 20, 
               backgroundColor: colors.ACCENT_TEAL, 
@@ -173,13 +208,13 @@ export default function SafeZoneMapScreen() {
             </View>
           </Marker>
 
-          {child.safeZones.map(zone => (
+          {safeZones.map((zone: any, index: number) => (
             <Circle
-              key={zone.id}
-              center={{ latitude: zone.lat, longitude: zone.lng }}
-              radius={zone.radius}
-              strokeColor={zone.color}
-              fillColor={zone.color + '30'}
+              key={zone.id || index}
+              center={{ latitude: zone.lat ?? DEFAULT_LOCATION.latitude, longitude: zone.lng ?? DEFAULT_LOCATION.longitude } as LatLng}
+              radius={zone.radius ?? 100}
+              strokeColor={zone.color ?? colors.ACCENT_TEAL}
+              fillColor={(zone.color ?? colors.ACCENT_TEAL) + '30'}
               strokeWidth={2}
             />
           ))}
@@ -187,13 +222,13 @@ export default function SafeZoneMapScreen() {
           {newZone && (
             <>
               <Circle
-                center={{ latitude: newZone.lat, longitude: newZone.lng }}
+                center={{ latitude: newZone.lat, longitude: newZone.lng } as LatLng}
                 radius={newZone.radius}
                 strokeColor={newZone.color}
                 fillColor={newZone.color + '40'}
                 strokeWidth={3}
               />
-              <Marker coordinate={{ latitude: newZone.lat, longitude: newZone.lng }} pinColor={newZone.color} />
+              <Marker coordinate={{ latitude: newZone.lat, longitude: newZone.lng } as LatLng} pinColor={newZone.color} />
             </>
           )}
         </MapView>
@@ -314,10 +349,10 @@ export default function SafeZoneMapScreen() {
         )}
 
         <ThemedText weight="bold" style={{ fontSize: 16, color: colors.TEXT_PRIMARY, marginBottom: 12 }}>
-          Active Zones ({child.safeZones.length})
+          Active Zones ({safeZones.length})
         </ThemedText>
 
-        {child.safeZones.length === 0 ? (
+        {safeZones.length === 0 ? (
           <GlassCard style={{ padding: 24, alignItems: 'center' }}>
             <Ionicons name="location-outline" size={48} color={colors.TEXT_SECONDARY} />
             <ThemedText style={{ fontSize: 14, color: colors.TEXT_SECONDARY, marginTop: 8, textAlign: 'center' }}>
@@ -326,12 +361,12 @@ export default function SafeZoneMapScreen() {
           </GlassCard>
         ) : (
           <View style={{ gap: 10 }}>
-            {child.safeZones.map(zone => (
-              <GlassCard key={zone.id} style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: zone.color, borderWidth: 2, borderColor: colors.BG_PRIMARY }} />
+            {safeZones.map((zone: any, index: number) => (
+              <GlassCard key={zone.id || index} style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: zone.color ?? colors.ACCENT_TEAL, borderWidth: 2, borderColor: colors.BG_PRIMARY }} />
                 <View style={{ flex: 1 }}>
                   <ThemedText weight="semibold" style={{ fontSize: 14, color: colors.TEXT_PRIMARY }}>{zone.name}</ThemedText>
-                  <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>{zone.radius}m radius</ThemedText>
+                  <ThemedText style={{ fontSize: 12, color: colors.TEXT_SECONDARY }}>{zone.radius ?? 100}m radius</ThemedText>
                 </View>
                 <TouchableOpacity onPress={() => deleteZone(zone.id)} style={{ padding: 6 }}>
                   <Ionicons name="trash-outline" size={18} color={colors.DANGER} />
