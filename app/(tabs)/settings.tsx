@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Switch, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, ScrollView, Switch, TouchableOpacity, Alert, StyleSheet,Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ui/ThemedText';
@@ -93,40 +93,45 @@ export default function SettingsScreen() {
      <SafeAreaView style={{ flex: 1, backgroundColor: colors.BG_PRIMARY }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1 }}>
         
-        {/* Profile Header Card */}
-        <GlassCard style={{ padding: 20, marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <View style={{ 
-              width: 64, height: 64, borderRadius: 32, 
-              backgroundColor: colors.ACCENT_TEAL, 
-              justifyContent: 'center', alignItems: 'center'
-            }}>
-              <ThemedText weight="bold" style={{ fontSize: 24, color: '#FFF' }}>
-                {(userData?.full_name || user?.full_name || 'U').charAt(0)}
-              </ThemedText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>
-                {userData?.full_name || user?.full_name || 'Loading...'}
-              </ThemedText>
-              <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY, marginTop: 2 }}>
-                {userData?.email || user?.email || ''}
-              </ThemedText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                <Ionicons name="shield-checkmark" size={12} color={colors.SUCCESS} />
-                <ThemedText style={{ fontSize: 11, color: colors.SUCCESS, fontWeight: '600' }}>
-                  Parent Account
-                </ThemedText>
+          {/* Profile Header Card with Photo */}
+          <GlassCard style={{ padding: 20, marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View style={{ 
+                width: 64, height: 64, borderRadius: 32, 
+                backgroundColor: colors.ACCENT_TEAL, 
+                justifyContent: 'center', alignItems: 'center',
+                overflow: 'hidden'
+              }}>
+                {(userData?.profile_photo_url || user?.profile_photo_url) ? (
+                  <Image source={{ uri: userData?.profile_photo_url || user?.profile_photo_url }} style={{ width: 64, height: 64 }} resizeMode="cover"/>
+                ) : (
+                  <ThemedText weight="bold" style={{ fontSize: 24, color: '#FFF' }}>
+                    {(userData?.full_name || user?.full_name || 'U').charAt(0)}
+                  </ThemedText>
+                )}
               </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText weight="bold" style={{ fontSize: 18, color: colors.TEXT_PRIMARY }}>
+                  {userData?.full_name || user?.full_name || 'Loading...'}
+                </ThemedText>
+                <ThemedText style={{ fontSize: 13, color: colors.TEXT_SECONDARY, marginTop: 2 }}>
+                  {userData?.email || user?.email || ''}
+                </ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <Ionicons name="shield-checkmark" size={12} color={colors.SUCCESS} />
+                  <ThemedText style={{ fontSize: 11, color: colors.SUCCESS, fontWeight: '600' }}>
+                    Parent Account
+                  </ThemedText>
+                </View>
+              </View>
+              <TouchableOpacity 
+                onPress={() => router.push('/edit-profile')}
+                style={{ padding: 8 }}
+              >
+                <Ionicons name="create-outline" size={20} color={colors.ACCENT_TEAL} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              onPress={() => router.push('/edit-profile')}
-              style={{ padding: 8 }}
-            >
-              <Ionicons name="create-outline" size={20} color={colors.ACCENT_TEAL} />
-            </TouchableOpacity>
-          </View>
-        </GlassCard>
+</GlassCard>
 
         {/* ACCOUNT Section */}
         <ThemedText weight="semibold" style={{ fontSize: 12, color: colors.TEXT_SECONDARY, marginBottom: 8, marginLeft: 4, letterSpacing: 1 }}>

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { authAPI } from '../api/auth';
 
-// ✅ User interface with all fields including profile_photo_url
 interface User {
   id: string;
   full_name: string;
@@ -17,13 +17,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    fullName: string,
-    email: string,
-    password: string,
-    phone?: string,
-    city?: string
-  ) => Promise<void>;
+  register: (fullName: string, email: string, password: string, phone?: string, city?: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
 }
@@ -35,18 +29,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadUser: async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      const userData = await AsyncStorage.getItem('user');
+      const token = await SecureStore.getItemAsync('token');
+      const userDataStr = await AsyncStorage.getItem('user_data');
       
-      if (token && userData) {
-        set({
-          isLoggedIn: true,
-          token,
-          user: JSON.parse(userData),
-        });
+      if (token && userDataStr) {
+        set({ isLoggedIn: true, token, user: JSON.parse(userDataStr) });
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('Load user error:', error);
     }
   },
 
@@ -54,64 +44,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authAPI.login({ email, password });
       
-      // ✅ Save user with profile_photo_url
+      // ✅ Load saved photo path from AsyncStorage
+      const savedPhoto = await AsyncStorage.getItem('user_profile_photo');
+      
       const userData: User = {
         id: response.user.id,
         full_name: response.user.full_name,
         email: response.user.email,
         phone: response.user.phone,
         city: response.user.city,
-        profile_photo_url: response.user.profile_photo_url,
+        // ✅ Keep existing photo if backend doesn't return one
+        profile_photo_url: response.user.profile_photo_url || savedPhoto || undefined,
       };
       
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await SecureStore.setItemAsync('token', response.access_token);
+      await AsyncStorage.setItem('user_data', JSON.stringify(userData));
       
-      set({
-        isLoggedIn: true,
-        token: response.access_token,
-        user: userData,
-      });
+      set({ isLoggedIn: true, token: response.access_token, user: userData });
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     }
   },
 
-  register: async (
-    fullName: string,
-    email: string,
-    password: string,
-    phone?: string,
-    city?: string
-  ) => {
+  register: async (fullName: string, email: string, password: string, phone?: string, city?: string) => {
     try {
-      const response = await authAPI.register({
-        full_name: fullName,
-        email,
-        password,
-        phone,
-        city,
-      });
+      const response = await authAPI.register({ full_name: fullName, email, password, phone, city });
       
-      // ✅ Save user with profile_photo_url
+      const savedPhoto = await AsyncStorage.getItem('user_profile_photo');
       const userData: User = {
         id: response.user.id,
         full_name: response.user.full_name,
         email: response.user.email,
         phone: response.user.phone,
         city: response.user.city,
-        profile_photo_url: response.user.profile_photo_url,
+        profile_photo_url: response.user.profile_photo_url || savedPhoto || undefined,
       };
       
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await SecureStore.setItemAsync('token', response.access_token);
+      await AsyncStorage.setItem('user_data', JSON.stringify(userData));
       
-      set({
-        isLoggedIn: true,
-        token: response.access_token,
-        user: userData,
-      });
+      set({ isLoggedIn: true, token: response.access_token, user: userData });
     } catch (error: any) {
       console.error('Register error:', error);
       throw error;
@@ -119,12 +92,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
-    set({
-      isLoggedIn: false,
-      user: null,
-      token: null,
-    });
+    await SecureStore.deleteItemAsync('token');
+    await AsyncStorage.removeItem('user_data');
+    // Keep photo file on disk so it persists across logins
+    set({ isLoggedIn: false, user: null, token: null });
   },
 }));

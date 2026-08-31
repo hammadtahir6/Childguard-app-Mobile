@@ -3,6 +3,7 @@ import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView, Image, Alert
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useThemeStore } from '../store/themeStore';
 import { useToastStore } from '../store/toastStore';
 import { ThemedText } from '../components/ui/ThemedText';
@@ -12,6 +13,26 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { BASE_URL } from '../api/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ✅ Helper function to parse API errors
+const getErrorMessage = (error: any): string => {
+  if (typeof error === 'string') return error;
+  if (error?.message) return error.message;
+  
+  if (error?.response?.status === 422 && error.response?.data?.detail) {
+    const detail = error.response.data.detail;
+    if (Array.isArray(detail)) {
+      return detail[0]?.msg || 'Validation failed';
+    }
+    if (typeof detail === 'string') return detail;
+  }
+  
+  if (error?.response?.data?.detail) {
+    return error.response.data.detail;
+  }
+  
+  return 'An error occurred. Please try again.';
+};
 
 export default function AddChildScreen() {
   const router = useRouter();
@@ -34,15 +55,38 @@ export default function AddChildScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
+const pickImage = async () => {
+  const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+  if (permissionResult.granted === false) {
+    Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+    return;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 1,
+  });
 
     if (!result.canceled) {
-      setChildPhoto(result.assets[0].uri);
+      const imageUrl = result.assets[0].uri;
+      
+      // ✅ Copy image to app's document directory for persistence
+      const fileName = `child_${Date.now()}.jpg`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+      
+      try {
+        await FileSystem.copyAsync({
+          from: imageUrl,
+          to: fileUri,
+        });
+        setChildPhoto(fileUri); // ✅ Save the persistent file path
+      } catch (error) {
+        console.error('Error saving image:', error);
+        setChildPhoto(imageUrl); // Fallback to original URI
+      }
     }
   };
 
@@ -84,8 +128,7 @@ export default function AddChildScreen() {
       router.replace(`/pair-band?childId=${response.data.id}`);
     } catch (error: any) {
       console.error('Add child error:', error);
-      const errorMsg = error.response?.data?.detail || 'Failed to add child. Please try again.';
-      showToast(errorMsg, 'error');
+      showToast(getErrorMessage(error), 'error'); // ✅ Use helper function
     }
   };
 
@@ -265,4 +308,5 @@ export default function AddChildScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
 }

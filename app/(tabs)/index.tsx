@@ -7,7 +7,8 @@ import {
   Pressable, 
   Alert, 
   Dimensions,
-  RefreshControl 
+  RefreshControl,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
@@ -217,13 +218,20 @@ export default function HomeDashboard() {
                   }
                 ]}
               >
+                {/* Child Avatar with Photo */}
                 <View style={[styles.avatarRing, { borderColor: child.status === 'SAFE' ? colors.SUCCESS : colors.WARNING, backgroundColor: colors.BG_TERTIARY }]}>
-                  <ThemedText style={{ fontSize: 20, fontWeight: 'bold', color: colors.TEXT_PRIMARY }}>{child.name.charAt(0)}</ThemedText>
-                </View>
-                <ThemedText weight="semibold" style={{ fontSize: 14, marginTop: 8, textAlign: 'center', color: colors.TEXT_PRIMARY }}>{child.name.split(' ')[0]}</ThemedText>
-                <View style={[styles.statusPill, { backgroundColor: child.status === 'SAFE' ? colors.SUCCESS + '20' : colors.WARNING + '20' }]}>
-                  <ThemedText style={{ fontSize: 10, color: child.status === 'SAFE' ? colors.SUCCESS : colors.WARNING, fontWeight: '700' }}>{child.status}</ThemedText>
-                </View>
+                  {child.profile_photo_url ? (
+                    <Image 
+                    source={{ uri: child.profile_photo_url }} 
+                    style={{ width: 46, height: 46, borderRadius: 23 }}
+                    resizeMode="cover"
+                    />
+                    ) : (
+                    <ThemedText style={{ fontSize: 20, fontWeight: 'bold', color: colors.TEXT_PRIMARY }}>
+                      {child.name.charAt(0)}
+                    </ThemedText>
+                  )}
+                </View> 
               </Pressable>
               
               <TouchableOpacity 

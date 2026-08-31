@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, TextInput, Alert, Dimensions } from 'react-native';
+import { View, ScrollView, TouchableOpacity, TextInput, Alert, Dimensions, Image } from 'react-native'; // ✅ ADD Image import
 import MapView, { Circle, Marker, MapPressEvent, Region, LatLng } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '../components/ui/ThemedText';
@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 const ZONE_COLORS = ['#00D4AA', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ✅ SAFE DEFAULT LOCATION
 const DEFAULT_LOCATION: Required<LatLng> = { latitude: 34.0151, longitude: 71.5249 };
 
 export default function SafeZoneMapScreen() {
@@ -22,15 +21,13 @@ export default function SafeZoneMapScreen() {
   const params = useLocalSearchParams();
   const childId = params.childId as string;
   const { colors } = useThemeStore();
-  const { children, setChildren } = useChildrenStore(); // ✅ Use setChildren instead of updateChildSafeZones
+  const { children, setChildren } = useChildrenStore();
   const { showToast } = useToastStore();
   
-  // ✅ SAFE: Find active child with fallback
   const child = children.length > 0 
     ? (children.find(c => c.id === childId) || children[0])
     : null;
 
-  // ✅ SAFE: Handle empty children
   if (!child) {
     return (
       <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
@@ -51,11 +48,8 @@ export default function SafeZoneMapScreen() {
     );
   }
   
-  // ✅ SAFE: Get location with guaranteed numbers
   const childLat = child.location?.lat ?? DEFAULT_LOCATION.latitude;
   const childLng = child.location?.lng ?? DEFAULT_LOCATION.longitude;
-  
-  // ✅ SAFE: Get safe zones with fallback
   const safeZones = child.safeZones || [];
 
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -106,8 +100,8 @@ export default function SafeZoneMapScreen() {
       color: newZone.color,
     };
 
-    // ✅ SAFE: Update children store with new zone
-    const updatedChildren = children.map(c => {
+    // ✅ Update children store with new zone
+    const updatedChildren = children.map((c: any) => {
       if (c.id === child.id) {
         return {
           ...c,
@@ -139,12 +133,11 @@ export default function SafeZoneMapScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            // ✅ SAFE: Update children store without the deleted zone
-            const updatedChildren = children.map(c => {
+            const updatedChildren = children.map((c: any) => {
               if (c.id === child.id) {
                 return {
                   ...c,
-                  safeZones: (c.safeZones || []).filter(z => z.id !== zoneId),
+                  safeZones: (c.safeZones || []).filter((z: any) => z.id !== zoneId),
                 };
               }
               return c;
@@ -159,7 +152,6 @@ export default function SafeZoneMapScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: 20, paddingBottom: 10 }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
           <Ionicons name="arrow-back" size={24} color={colors.TEXT_PRIMARY} />
@@ -170,7 +162,6 @@ export default function SafeZoneMapScreen() {
         </View>
       </View>
 
-      {/* Map Container */}
       <View style={{ 
         width: MAP_WIDTH, 
         height: MAP_HEIGHT, 
@@ -246,7 +237,6 @@ export default function SafeZoneMapScreen() {
         )}
       </View>
 
-      {/* Controls */}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, marginTop: 16 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         
         {!isDrawingMode ? (

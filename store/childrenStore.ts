@@ -112,8 +112,18 @@ export const useChildrenStore = create<ChildrenState>((set) => ({
     activeChildId: child.id,
   })),
   
+// Add this new function to the store:
+updateChildSafeZones: (childId: string, safeZones: any[]) => set((state) => ({
+  children: state.children.map((child) =>
+    child.id === childId
+      ? { ...child, safeZones }
+      : child
+  ),
+})),
+
   deleteChild: (id) => set((state) => ({
     children: state.children.filter((child) => child.id !== id),
     activeChildId: state.activeChildId === id ? null : state.activeChildId,
   })),
 }));
+
